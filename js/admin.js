@@ -65,7 +65,10 @@ async function projeleriYukle() {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
     kart.innerHTML = `
-      <h3>${kacir(proje.ad)}</h3>
+      <div class="kart-baslik-satiri">
+        <span class="kart-ikon">${ikonlar.klasor}</span>
+        <h3>${kacir(proje.ad)}</h3>
+      </div>
       <p>${kacir(proje.aciklama || "")}</p>
       <div class="kart-alt-bilgi">
         <span>${proje.kullanici_sayisi} kullanıcı</span>
@@ -205,7 +208,10 @@ async function revizyonlariYukle() {
       .join("");
 
     kart.innerHTML = `
-      <h3>${kacir(rev.baslik)}</h3>
+      <div class="kart-baslik-satiri">
+        <span class="kart-ikon">${ikonlar.belge}</span>
+        <h3>${kacir(rev.baslik)}</h3>
+      </div>
       <p>${kacir(rev.aciklama || "")}</p>
       <div class="kart-alt-bilgi"><span>${rev.madde_sayisi} madde</span></div>
       ${tamamlayanlarHtml ? `<div class="durum-listesi">${tamamlayanlarHtml}</div>` : ""}
@@ -240,14 +246,16 @@ document.getElementById("yeniMaddeIptalButonu").addEventListener("click", () => 
   document.getElementById("yeniMaddeFormu").classList.add("gizli");
 });
 document.getElementById("yeniMaddeKaydetButonu").addEventListener("click", async () => {
+  const baslik = document.getElementById("yeniMaddeBaslik").value.trim();
   const metin = document.getElementById("yeniMaddeMetin").value.trim();
   const medyaUrl = document.getElementById("yeniMaddeMedyaUrl").value.trim();
   const medyaTipi = document.getElementById("yeniMaddeMedyaTipi").value;
-  if (!metin) return hataGoster("Madde metni gerekli.");
+  if (!baslik) return hataGoster("Madde başlığı gerekli.");
 
   const maddeId = await rpc("madde_ekle", {
     p_token: kullanici.oturum_token,
     p_revizyon_id: aktifRevizyonId,
+    p_baslik: baslik,
     p_metin: metin,
     p_sira: 0,
   });
@@ -262,6 +270,7 @@ document.getElementById("yeniMaddeKaydetButonu").addEventListener("click", async
     });
   }
 
+  document.getElementById("yeniMaddeBaslik").value = "";
   document.getElementById("yeniMaddeMetin").value = "";
   document.getElementById("yeniMaddeMedyaUrl").value = "";
   document.getElementById("yeniMaddeMedyaTipi").value = "";
@@ -280,50 +289,83 @@ async function maddeleriYukle() {
     liste.innerHTML = '<p class="bos-mesaj">Henüz madde yok.</p>';
     return;
   }
+
+  const sarmalayici = document.createElement("div");
+  sarmalayici.className = "madde-kart-listesi";
+
   maddeler.forEach((madde) => {
-    const kutu = document.createElement("div");
-    kutu.className = "madde-kutusu";
+    const tamamlananSayisi = (madde.durumlar || []).filter((d) => d.yapildi).length;
+    const toplamKullanici = (madde.durumlar || []).length;
 
-    let medyaHtml = "";
-    (madde.medya || []).forEach((m) => {
-      if (m.tip === "gorsel") {
-        medyaHtml += `<img src="${kacir(m.url)}" class="madde-medya-gorsel" />`;
-      } else if (m.tip === "video") {
-        medyaHtml += `<video src="${kacir(m.url)}" controls class="madde-medya-video"></video>`;
-      } else {
-        medyaHtml += `<a href="${kacir(m.url)}" target="_blank" rel="noopener" class="madde-medya-link">Ek dosya</a>`;
-      }
-    });
-
-    let durumHtml = "";
-    if (madde.durumlar && madde.durumlar.length > 0) {
-      durumHtml = madde.durumlar
-        .map(
-          (d) =>
-            `<span class="durum-etiket ${d.yapildi ? "yapildi" : "beklemede"}">${kacir(d.kullanici_adi)}: ${
-              d.yapildi ? "Yapıldı" : "Bekliyor"
-            }${d.aciklama ? " — " + kacir(d.aciklama) : ""}</span>`
-        )
-        .join("");
-    } else {
-      durumHtml = '<span class="durum-etiket beklemede">Henüz kimse işaretlemedi</span>';
-    }
-
-    let yorumHtml = "";
-    if (madde.yorumlar && madde.yorumlar.length > 0) {
-      yorumHtml = madde.yorumlar
-        .map((y) => `<div class="yorum-satiri"><strong>${kacir(y.kullanici_adi)}:</strong> ${kacir(y.yorum)}</div>`)
-        .join("");
-    }
-
-    kutu.innerHTML = `
-      <p class="madde-metin">${kacir(madde.metin)}</p>
-      ${medyaHtml}
-      <div class="durum-listesi">${durumHtml}</div>
-      ${yorumHtml ? `<div class="yorum-listesi">${yorumHtml}</div>` : ""}
+    const kart = document.createElement("div");
+    kart.className = "madde-kart";
+    kart.innerHTML = `
+      <span class="madde-kart-baslik">${kacir(madde.baslik || madde.metin)}</span>
+      <span class="madde-kart-sag">
+        ${
+          toplamKullanici > 0
+            ? `<span class="durum-etiket ${tamamlananSayisi === toplamKullanici ? "yapildi" : "beklemede"}">${tamamlananSayisi}/${toplamKullanici} tamamladı</span>`
+            : '<span class="durum-etiket beklemede">Henüz işaretlenmedi</span>'
+        }
+        ${madde.yorumlar && madde.yorumlar.length > 0 ? `<span class="durum-etiket">${ikonlar.sohbet} ${madde.yorumlar.length}</span>` : ""}
+      </span>
     `;
-    liste.appendChild(kutu);
+    kart.addEventListener("click", () => maddeDetayModaliAc(madde));
+    sarmalayici.appendChild(kart);
   });
+
+  liste.appendChild(sarmalayici);
+}
+
+function maddeDetayModaliAc(madde) {
+  let medyaHtml = "";
+  (madde.medya || []).forEach((m) => {
+    if (m.tip === "gorsel") {
+      medyaHtml += `<img src="${kacir(m.url)}" class="madde-medya-gorsel" />`;
+    } else if (m.tip === "video") {
+      medyaHtml += `<video src="${kacir(m.url)}" controls class="madde-medya-video"></video>`;
+    } else {
+      medyaHtml += `<a href="${kacir(m.url)}" target="_blank" rel="noopener" class="madde-medya-link">Ek dosya</a>`;
+    }
+  });
+
+  let durumHtml = '<p class="bos-mesaj">Henüz kimse işaretlemedi.</p>';
+  if (madde.durumlar && madde.durumlar.length > 0) {
+    durumHtml = `<div class="durum-listesi">${madde.durumlar
+      .map(
+        (d) =>
+          `<span class="durum-etiket ${d.yapildi ? "yapildi" : "beklemede"}">${kacir(d.kullanici_adi)}: ${
+            d.yapildi ? "Yaptı" : "Bekliyor"
+          }${d.aciklama ? " — " + kacir(d.aciklama) : ""}</span>`
+      )
+      .join("")}</div>`;
+  }
+
+  let yorumHtml = '<p class="bos-mesaj">Henüz yorum yok.</p>';
+  if (madde.yorumlar && madde.yorumlar.length > 0) {
+    yorumHtml = `<div class="yorum-listesi">${madde.yorumlar
+      .map((y) => `<div class="yorum-satiri"><strong>${kacir(y.kullanici_adi)}:</strong> ${kacir(y.yorum)}</div>`)
+      .join("")}</div>`;
+  }
+
+  modalAc(`
+    <h2 class="modal-baslik">${kacir(madde.baslik || madde.metin)}</h2>
+    ${
+      madde.metin
+        ? `<div class="modal-bolum"><p class="modal-metin">${kacir(madde.metin)}</p>${medyaHtml}</div>`
+        : medyaHtml
+        ? `<div class="modal-bolum">${medyaHtml}</div>`
+        : ""
+    }
+    <div class="modal-bolum">
+      <div class="modal-bolum-etiket">${ikonlar.tik} Kim tamamladı</div>
+      ${durumHtml}
+    </div>
+    <div class="modal-bolum">
+      <div class="modal-bolum-etiket">${ikonlar.sohbet} Yorumlar / geri bildirim</div>
+      ${yorumHtml}
+    </div>
+  `);
 }
 
 // ============================================================

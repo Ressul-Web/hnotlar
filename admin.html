@@ -31,7 +31,7 @@
       <div id="projeListesiGorunumu">
         <div class="panel-baslik-satiri">
           <h2>Projeler</h2>
-          <button id="yeniProjeAcButonu" class="birincil-buton">+ Yeni Proje</button>
+          <button id="yeniProjeAcButonu" class="birincil-buton"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Yeni Proje</button>
         </div>
         <div id="yeniProjeFormu" class="form-kutusu gizli">
           <input type="text" id="yeniProjeAd" placeholder="Proje adı" />
@@ -45,7 +45,7 @@
       </div>
 
       <div id="projeDetayGorunumu" class="gizli">
-        <button id="projeyeGeriDonButonu" class="geri-buton">← Projelere dön</button>
+        <button id="projeyeGeriDonButonu" class="geri-buton"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Projelere dön</button>
         <h2 id="projeDetayBaslik"></h2>
         <p id="projeDetayAciklama" class="aciklama-metni"></p>
 
@@ -55,7 +55,7 @@
           </div>
           <div id="atananKullanicilar" class="etiket-listesi"></div>
           <div class="form-buton-satiri">
-            <select id="kullaniciAtaSecim"></select>
+            <select id="kullaniciAtaSecim" class="secim-kutusu"></select>
             <button id="kullaniciAtaButonu" class="ikincil-buton">Ata</button>
           </div>
         </div>
@@ -63,7 +63,7 @@
         <div class="detay-bolum">
           <div class="panel-baslik-satiri">
             <h3>Revizyonlar</h3>
-            <button id="yeniRevizyonAcButonu" class="birincil-buton">+ Yeni Revizyon</button>
+            <button id="yeniRevizyonAcButonu" class="birincil-buton"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Yeni Revizyon</button>
           </div>
           <div id="yeniRevizyonFormu" class="form-kutusu gizli">
             <input type="text" id="yeniRevizyonBaslik" placeholder="Revizyon başlığı" />
@@ -78,16 +78,17 @@
       </div>
 
       <div id="revizyonDetayGorunumu" class="gizli">
-        <button id="revizyonaGeriDonButonu" class="geri-buton">← Revizyonlara dön</button>
+        <button id="revizyonaGeriDonButonu" class="geri-buton"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Revizyonlara dön</button>
         <h2 id="revizyonDetayBaslik"></h2>
         <p id="revizyonDetayAciklama" class="aciklama-metni"></p>
 
         <div class="panel-baslik-satiri">
           <h3>Maddeler</h3>
-          <button id="yeniMaddeAcButonu" class="birincil-buton">+ Yeni Madde</button>
+          <button id="yeniMaddeAcButonu" class="birincil-buton"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Yeni Madde</button>
         </div>
         <div id="yeniMaddeFormu" class="form-kutusu gizli">
-          <textarea id="yeniMaddeMetin" placeholder="Madde metni"></textarea>
+          <input type="text" id="yeniMaddeBaslik" placeholder="Madde başlığı" />
+          <textarea id="yeniMaddeMetin" placeholder="Madde içeriği (detay metni)"></textarea>
           <input type="url" id="yeniMaddeMedyaUrl" placeholder="Görsel/Video URL (opsiyonel)" />
           <select id="yeniMaddeMedyaTipi">
             <option value="">Medya yok</option>
@@ -107,7 +108,7 @@
     <section id="tab-kullanicilar" class="tab-panel">
       <div class="panel-baslik-satiri">
         <h2>Kullanıcılar</h2>
-        <button id="yeniKullaniciAcButonu" class="birincil-buton">+ Yeni Kullanıcı</button>
+        <button id="yeniKullaniciAcButonu" class="birincil-buton"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Yeni Kullanıcı</button>
       </div>
       <div id="yeniKullaniciFormu" class="form-kutusu gizli">
         <input type="text" id="yeniKullaniciAdi" placeholder="Kullanıcı adı" />
@@ -135,6 +136,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="js/supabaseClient.js"></script>
   <script src="js/oturum.js"></script>
+  <script src="js/modal.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

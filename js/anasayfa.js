@@ -50,7 +50,10 @@ async function projeleriYukle() {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
     kart.innerHTML = `
-      <h3>${kacir(proje.ad)}</h3>
+      <div class="kart-baslik-satiri">
+        <span class="kart-ikon">${ikonlar.klasor}</span>
+        <h3>${kacir(proje.ad)}</h3>
+      </div>
       <p>${kacir(proje.aciklama || "")}</p>
       <div class="kart-alt-bilgi"><span>${proje.revizyon_sayisi} revizyon</span></div>
     `;
@@ -96,7 +99,10 @@ async function revizyonlariYukle() {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
     kart.innerHTML = `
-      <h3>${kacir(rev.baslik)}</h3>
+      <div class="kart-baslik-satiri">
+        <span class="kart-ikon">${ikonlar.belge}</span>
+        <h3>${kacir(rev.baslik)}</h3>
+      </div>
       <p>${kacir(rev.aciklama || "")}</p>
       <div class="kart-alt-bilgi">
         <span>${rev.tamamlanan_madde_sayisi}/${rev.madde_sayisi} madde tamamlandı</span>
@@ -136,7 +142,9 @@ let revizyonTamamlandiMi = false;
 function revizyonTamamlandiButonuGuncelle(tamamlandi) {
   revizyonTamamlandiMi = tamamlandi;
   const buton = document.getElementById("revizyonTamamlaButonu");
-  buton.textContent = tamamlandi ? "Tamamlandı İşaretini Kaldır" : "Revizyonu Tamamlandı İşaretle";
+  buton.innerHTML = tamamlandi
+    ? `${ikonlar.tik} Tamamlandı İşaretini Kaldır`
+    : `${ikonlar.tik} Revizyonu Tamamlandı İşaretle`;
   buton.classList.toggle("ikincil-buton", tamamlandi);
   buton.classList.toggle("birincil-buton", !tamamlandi);
 }
@@ -164,16 +172,33 @@ async function maddeleriYukle() {
     liste.innerHTML = '<p class="bos-mesaj">Bu revizyonda henüz madde yok.</p>';
     return;
   }
+
+  const sarmalayici = document.createElement("div");
+  sarmalayici.className = "madde-kart-listesi";
+
   maddeler.forEach((madde) => {
-    liste.appendChild(maddeKutusuOlustur(madde));
+    const durum = madde.benim_durumum || { yapildi: false, aciklama: null };
+    const kart = document.createElement("div");
+    kart.className = "madde-kart";
+    kart.innerHTML = `
+      <span class="madde-kart-baslik">${kacir(madde.baslik || madde.metin)}</span>
+      <span class="madde-kart-sag">
+        ${
+          madde.yorumlar && madde.yorumlar.length > 0
+            ? `<span class="durum-etiket">${ikonlar.sohbet} ${madde.yorumlar.length}</span>`
+            : ""
+        }
+        <span class="durum-etiket ${durum.yapildi ? "yapildi" : "beklemede"}">${durum.yapildi ? "Yapıldı" : "Bekliyor"}</span>
+      </span>
+    `;
+    kart.addEventListener("click", () => maddeDetayModaliAc(madde));
+    sarmalayici.appendChild(kart);
   });
+
+  liste.appendChild(sarmalayici);
 }
 
-function maddeKutusuOlustur(madde) {
-  const kutu = document.createElement("div");
-  kutu.className = "madde-kutusu";
-  kutu.dataset.maddeId = madde.id;
-
+function maddeDetayModaliAc(madde) {
   let medyaHtml = "";
   (madde.medya || []).forEach((m) => {
     if (m.tip === "gorsel") {
@@ -187,45 +212,66 @@ function maddeKutusuOlustur(madde) {
 
   const durum = madde.benim_durumum || { yapildi: false, aciklama: null };
 
-  let yorumHtml = "";
+  let yorumHtml = '<p class="bos-mesaj">Henüz yorum yok.</p>';
   if (madde.yorumlar && madde.yorumlar.length > 0) {
     yorumHtml = madde.yorumlar
       .map((y) => `<div class="yorum-satiri"><strong>${kacir(y.kullanici_adi)}:</strong> ${kacir(y.yorum)}</div>`)
       .join("");
   }
 
-  kutu.innerHTML = `
-    <p class="madde-metin">${kacir(madde.metin)}</p>
-    ${medyaHtml}
-    <label class="durum-checkbox">
-      <input type="checkbox" class="madde-yapildi-kutusu" ${durum.yapildi ? "checked" : ""} />
-      Yaptım
-    </label>
-    <input type="text" class="madde-aciklama-girisi" placeholder="Açıklama (opsiyonel)" value="${kacir(durum.aciklama || "")}" />
-    <div class="yorum-listesi">${yorumHtml}</div>
-    <div class="yorum-ekle-satiri">
-      <input type="text" class="yorum-girisi" placeholder="Anlaşılmayan bir şey mi var? Yorum yaz..." />
-      <button class="ikincil-buton yorum-gonder-butonu">Gönder</button>
-    </div>
-  `;
+  const icerik = modalAc(`
+    <h2 class="modal-baslik">${kacir(madde.baslik || madde.metin)}</h2>
+    ${madde.metin ? `<div class="modal-bolum"><p class="modal-metin">${kacir(madde.metin)}</p>${medyaHtml}</div>` : medyaHtml}
 
-  const yapildiKutusu = kutu.querySelector(".madde-yapildi-kutusu");
-  const aciklamaGirisi = kutu.querySelector(".madde-aciklama-girisi");
+    <div class="modal-bolum">
+      <div class="modal-bolum-etiket">Açıklama</div>
+      <input type="text" class="madde-aciklama-girisi" placeholder="İstersen açıklama ekle (opsiyonel)" value="${kacir(
+        durum.aciklama || ""
+      )}" />
+    </div>
+
+    <div class="modal-bolum">
+      <button class="birincil-buton yapildi-buton ${durum.yapildi ? "aktif" : ""}">
+        ${ikonlar.tik} ${durum.yapildi ? "Yapıldı Olarak İşaretlendi" : "Yaptım"}
+      </button>
+    </div>
+
+    <div class="modal-bolum">
+      <div class="modal-bolum-etiket">${ikonlar.sohbet} Anlaşılmayan bir şey var mı?</div>
+      <div class="yorum-listesi">${yorumHtml}</div>
+      <div class="yorum-ekle-satiri">
+        <input type="text" class="yorum-girisi" placeholder="Sorunu ya da geri bildirimini yaz..." />
+        <button class="ikincil-buton yorum-gonder-butonu">Gönder</button>
+      </div>
+    </div>
+  `);
+
+  const aciklamaGirisi = icerik.querySelector(".madde-aciklama-girisi");
+  const yapildiButonu = icerik.querySelector(".yapildi-buton");
+  let yapildiMi = durum.yapildi;
 
   async function durumuKaydet() {
     await rpc("madde_isaretle", {
       p_token: kullanici.oturum_token,
       p_madde_id: madde.id,
-      p_yapildi: yapildiKutusu.checked,
+      p_yapildi: yapildiMi,
       p_aciklama: aciklamaGirisi.value.trim() || null,
     });
   }
 
-  yapildiKutusu.addEventListener("change", durumuKaydet);
   aciklamaGirisi.addEventListener("blur", durumuKaydet);
 
-  kutu.querySelector(".yorum-gonder-butonu").addEventListener("click", async () => {
-    const yorumGirisi = kutu.querySelector(".yorum-girisi");
+  yapildiButonu.addEventListener("click", async () => {
+    yapildiMi = !yapildiMi;
+    yapildiButonu.classList.toggle("aktif", yapildiMi);
+    yapildiButonu.innerHTML = `${ikonlar.tik} ${yapildiMi ? "Yapıldı Olarak İşaretlendi" : "Yaptım"}`;
+    await durumuKaydet();
+    maddeleriYukle();
+    revizyonlariYukle();
+  });
+
+  icerik.querySelector(".yorum-gonder-butonu").addEventListener("click", async () => {
+    const yorumGirisi = icerik.querySelector(".yorum-girisi");
     const yorum = yorumGirisi.value.trim();
     if (!yorum) return;
     await rpc("madde_yorum_ekle", { p_token: kullanici.oturum_token, p_madde_id: madde.id, p_yorum: yorum });
@@ -233,10 +279,9 @@ function maddeKutusuOlustur(madde) {
     const guncelMadde = (
       await rpc("kullanici_maddeleri_getir", { p_token: kullanici.oturum_token, p_revizyon_id: aktifRevizyonId })
     ).find((m) => m.id === madde.id);
-    kutu.replaceWith(maddeKutusuOlustur(guncelMadde));
+    maddeleriYukle();
+    maddeDetayModaliAc(guncelMadde);
   });
-
-  return kutu;
 }
 
 // ============================================================

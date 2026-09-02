@@ -80,10 +80,13 @@ create table if not exists revizyonlar (
 create table if not exists maddeler (
   id uuid primary key default gen_random_uuid(),
   revizyon_id uuid not null references revizyonlar(id) on delete cascade,
+  baslik text,
   metin text not null,
   sira integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+alter table maddeler add column if not exists baslik text;
 
 -- ============================================================
 -- MADDE_MEDYA (maddeye ait ekstra metin / gorsel / video)
@@ -464,7 +467,9 @@ $$;
 revoke all on function revizyon_olustur(text, uuid, text, text) from public;
 grant execute on function revizyon_olustur(text, uuid, text, text) to anon, authenticated;
 
-create or replace function madde_ekle(p_token text, p_revizyon_id uuid, p_metin text, p_sira integer default 0)
+drop function if exists madde_ekle(text, uuid, text, integer);
+
+create or replace function madde_ekle(p_token text, p_revizyon_id uuid, p_baslik text, p_metin text, p_sira integer default 0)
 returns uuid
 language plpgsql
 security definer
@@ -475,16 +480,16 @@ declare
 begin
   perform gecerli_admin(p_token);
 
-  insert into maddeler (revizyon_id, metin, sira)
-  values (p_revizyon_id, p_metin, p_sira)
+  insert into maddeler (revizyon_id, baslik, metin, sira)
+  values (p_revizyon_id, p_baslik, p_metin, p_sira)
   returning id into v_id;
 
   return v_id;
 end;
 $$;
 
-revoke all on function madde_ekle(text, uuid, text, integer) from public;
-grant execute on function madde_ekle(text, uuid, text, integer) to anon, authenticated;
+revoke all on function madde_ekle(text, uuid, text, text, integer) from public;
+grant execute on function madde_ekle(text, uuid, text, text, integer) to anon, authenticated;
 
 create or replace function madde_medya_ekle(p_token text, p_madde_id uuid, p_medya_url text, p_medya_tipi text, p_sira integer default 0)
 returns uuid
@@ -579,8 +584,10 @@ $$;
 revoke all on function admin_revizyonlari_getir(text, uuid) from public;
 grant execute on function admin_revizyonlari_getir(text, uuid) to anon, authenticated;
 
+drop function if exists admin_maddeleri_getir(text, uuid);
+
 create or replace function admin_maddeleri_getir(p_token text, p_revizyon_id uuid)
-returns table (id uuid, metin text, sira integer, medya jsonb, durumlar jsonb, yorumlar jsonb)
+returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, durumlar jsonb, yorumlar jsonb)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -591,6 +598,7 @@ begin
   return query
   select
     m.id,
+    m.baslik,
     m.metin,
     m.sira,
     coalesce((select jsonb_agg(jsonb_build_object('id', mm.id, 'url', mm.medya_url, 'tip', mm.medya_tipi) order by mm.sira)
@@ -676,8 +684,10 @@ $$;
 revoke all on function kullanici_revizyonlari_getir(text, uuid) from public;
 grant execute on function kullanici_revizyonlari_getir(text, uuid) to anon, authenticated;
 
+drop function if exists kullanici_maddeleri_getir(text, uuid);
+
 create or replace function kullanici_maddeleri_getir(p_token text, p_revizyon_id uuid)
-returns table (id uuid, metin text, sira integer, medya jsonb, benim_durumum jsonb, yorumlar jsonb)
+returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, benim_durumum jsonb, yorumlar jsonb)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -696,7 +706,7 @@ begin
 
   return query
   select
-    m.id, m.metin, m.sira,
+    m.id, m.baslik, m.metin, m.sira,
     coalesce((select jsonb_agg(jsonb_build_object('id', mm.id, 'url', mm.medya_url, 'tip', mm.medya_tipi) order by mm.sira)
               from madde_medya mm where mm.madde_id = m.id), '[]'::jsonb),
     coalesce((select jsonb_build_object('yapildi', md.yapildi, 'aciklama', md.yapildi_aciklama)
