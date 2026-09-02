@@ -487,7 +487,7 @@
 }
 
 .kart-listesi .kart:nth-child(even) {
-  background: var(--renk-gri-50);
+  background: var(--renk-gri-100);
 }
 
 .kart-sol {
@@ -701,10 +701,13 @@
   gap: 10px;
 }
 
-.atama-satiri .secim-kutusu {
+.atama-satiri .atama-secim-alani {
   flex: 1;
   min-width: 260px;
-  padding: 12px 34px 12px 16px;
+}
+
+.atama-satiri .atama-secim-alani .ozel-secim-buton {
+  padding: 12px 14px;
 }
 
 .madde-listesi {
@@ -725,6 +728,14 @@
   font-size: 14px;
   margin-bottom: 10px;
   line-height: 1.5;
+}
+
+.medya-onizleme-kapali {
+  margin-bottom: 10px;
+}
+
+.medya-onizleme-kapali .madde-dosya-karti {
+  margin-bottom: 8px;
 }
 
 .madde-medya-gorsel,
@@ -1065,7 +1076,7 @@ body.modal-kilit {
 }
 
 .madde-kart-listesi .madde-kart:nth-child(even) {
-  background: var(--renk-gri-50);
+  background: var(--renk-gri-100);
 }
 
 .madde-kart-baslik {

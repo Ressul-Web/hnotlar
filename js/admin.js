@@ -192,30 +192,28 @@ async function atananKullanicilariYukle() {
   });
 }
 
+const kullaniciAtaSecici = ozelSecimOlustur([{ deger: "", etiket: "Kullanıcı yok" }]);
+document.getElementById("kullaniciAtaSecimAlani").appendChild(kullaniciAtaSecici.element);
+
 async function atamaIcinKullanicilariYukle() {
   const tumKullanicilar = await rpc("admin_kullanicilari_getir", { p_token: kullanici.oturum_token });
   const atananlar = await rpc("admin_proje_kullanicilari_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
   const atananIdler = new Set((atananlar || []).map((a) => a.kullanici_id));
 
-  const secim = document.getElementById("kullaniciAtaSecim");
-  secim.innerHTML = "";
-  tumKullanicilar
+  const secenekler = tumKullanicilar
     .filter((k) => (k.rol === "personel" || k.rol === "firma" || k.rol === "patron") && !atananIdler.has(k.id))
-    .forEach((k) => {
-      const opt = document.createElement("option");
-      opt.value = k.id;
-      opt.textContent = `${k.ad_soyad} (${k.rol})`;
-      secim.appendChild(opt);
-    });
+    .map((k) => ({ deger: k.id, etiket: `${k.ad_soyad} (${k.rol})` }));
+
+  kullaniciAtaSecici.setSecenekler(secenekler.length > 0 ? secenekler : [{ deger: "", etiket: "Atanacak kimse yok" }]);
 }
 
 document.getElementById("kullaniciAtaButonu").addEventListener("click", async () => {
-  const secim = document.getElementById("kullaniciAtaSecim");
-  if (!secim.value) return;
+  const secilenId = kullaniciAtaSecici.getDeger();
+  if (!secilenId) return;
   await rpc("proje_kullanici_ata", {
     p_token: kullanici.oturum_token,
     p_proje_id: aktifProjeId,
-    p_kullanici_id: secim.value,
+    p_kullanici_id: secilenId,
   });
   atananKullanicilariYukle();
   atamaIcinKullanicilariYukle();
@@ -575,16 +573,26 @@ document.getElementById("yeniKullaniciAcButonu").addEventListener("click", () =>
 document.getElementById("yeniKullaniciIptalButonu").addEventListener("click", () => {
   document.getElementById("yeniKullaniciFormu").classList.add("gizli");
 });
-document.getElementById("yeniKullaniciRol").addEventListener("change", (e) => {
-  const firmaAdiAlani = document.getElementById("yeniKullaniciFirmaAdi");
-  firmaAdiAlani.classList.toggle("gizli", e.target.value !== "firma");
-  if (e.target.value !== "firma") firmaAdiAlani.value = "";
-});
+const yeniKullaniciRolSecici = ozelSecimOlustur(
+  [
+    { deger: "personel", etiket: "Personel" },
+    { deger: "firma", etiket: "Firma" },
+    { deger: "patron", etiket: "Patron" },
+    { deger: "admin", etiket: "Admin" },
+  ],
+  (deger) => {
+    const firmaAdiAlani = document.getElementById("yeniKullaniciFirmaAdi");
+    firmaAdiAlani.classList.toggle("gizli", deger !== "firma");
+    if (deger !== "firma") firmaAdiAlani.value = "";
+  }
+);
+document.getElementById("yeniKullaniciRolAlani").appendChild(yeniKullaniciRolSecici.element);
+
 document.getElementById("yeniKullaniciKaydetButonu").addEventListener("click", async () => {
   const kullaniciAdi = document.getElementById("yeniKullaniciAdi").value.trim();
   const sifre = document.getElementById("yeniKullaniciSifre").value;
   const adSoyad = document.getElementById("yeniKullaniciAdSoyad").value.trim();
-  const rol = document.getElementById("yeniKullaniciRol").value;
+  const rol = yeniKullaniciRolSecici.getDeger();
   const firmaAdi = document.getElementById("yeniKullaniciFirmaAdi").value.trim();
   const aciklama = document.getElementById("yeniKullaniciAciklama").value.trim();
 

@@ -7,7 +7,11 @@ function kacir(metin) {
 function medyaOnizlemeHtml(m) {
   const dosyaAdi = kacir((m.url || "").split("/").pop().split("?")[0]);
   const url = kacir(m.url);
-  if (m.tip === "gorsel") return `<img src="${url}" class="madde-medya-gorsel" />`;
+  if (m.tip === "gorsel")
+    return `<div class="medya-onizleme-kapali">
+      <button type="button" class="madde-dosya-karti gorsel-goster-butonu">${ikonlar.gorsel} ${dosyaAdi || "Görsel"}</button>
+      <img src="${url}" class="madde-medya-gorsel gizli" />
+    </div>`;
   if (m.tip === "video") return `<video src="${url}" controls class="madde-medya-video"></video>`;
   if (m.tip === "word") return `<a href="${url}" target="_blank" rel="noopener" class="madde-dosya-karti">${ikonlar.word} ${dosyaAdi || "Word belgesi"}</a>`;
   if (m.tip === "excel") return `<a href="${url}" target="_blank" rel="noopener" class="madde-dosya-karti">${ikonlar.excel} ${dosyaAdi || "Excel belgesi"}</a>`;
@@ -79,6 +83,80 @@ const ikonlar = {
 document.addEventListener("click", () => {
   document.querySelectorAll(".ozel-secim-liste.acik").forEach((l) => l.classList.remove("acik"));
 });
+
+document.addEventListener("click", (e) => {
+  const buton = e.target.closest(".gorsel-goster-butonu");
+  if (!buton) return;
+  const kutu = buton.closest(".medya-onizleme-kapali");
+  kutu.querySelector("img").classList.remove("gizli");
+  buton.classList.add("gizli");
+});
+
+/**
+ * Genel amacli ozel stilli dropdown. secenekler: [{deger, etiket, ikon}]
+ * Donen nesne: { element, getDeger(), setDeger(deger), setSecenekler(secenekler) }
+ */
+function ozelSecimOlustur(secenekler, onDegisti) {
+  const sarmalayici = document.createElement("div");
+  sarmalayici.className = "ozel-secim";
+  sarmalayici.innerHTML = `
+    <button type="button" class="ozel-secim-buton">
+      <span class="ozel-secim-etiket">Seçiniz</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="ozel-secim-liste"></div>
+  `;
+
+  const buton = sarmalayici.querySelector(".ozel-secim-buton");
+  const etiket = sarmalayici.querySelector(".ozel-secim-etiket");
+  const liste = sarmalayici.querySelector(".ozel-secim-liste");
+  let seciliDeger = "";
+  let mevcutSecenekler = [];
+
+  function secenekleriDoldur(yeniSecenekler, ilkSecim) {
+    mevcutSecenekler = yeniSecenekler;
+    liste.innerHTML = mevcutSecenekler
+      .map((s) => `<div class="ozel-secim-secenek" data-deger="${kacir(s.deger)}">${s.ikon || ""} ${kacir(s.etiket)}</div>`)
+      .join("");
+
+    liste.querySelectorAll(".ozel-secim-secenek").forEach((secenekEl) => {
+      secenekEl.addEventListener("click", () => {
+        seciliDeger = secenekEl.dataset.deger;
+        etiket.textContent = secenekEl.textContent.trim();
+        liste.classList.remove("acik");
+        if (onDegisti) onDegisti(seciliDeger);
+      });
+    });
+
+    if (ilkSecim !== false && mevcutSecenekler.length > 0) {
+      seciliDeger = mevcutSecenekler[0].deger;
+      etiket.textContent = mevcutSecenekler[0].etiket;
+    }
+  }
+
+  buton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.querySelectorAll(".ozel-secim-liste.acik").forEach((l) => {
+      if (l !== liste) l.classList.remove("acik");
+    });
+    liste.classList.toggle("acik");
+  });
+
+  secenekleriDoldur(secenekler);
+
+  return {
+    element: sarmalayici,
+    getDeger: () => seciliDeger,
+    setDeger: (deger) => {
+      const s = mevcutSecenekler.find((x) => x.deger === deger);
+      if (s) {
+        seciliDeger = deger;
+        etiket.textContent = s.etiket;
+      }
+    },
+    setSecenekler: (yeniSecenekler) => secenekleriDoldur(yeniSecenekler),
+  };
+}
 
 const medyaTipiSecenekleri = [
   { deger: "", etiket: "Medya yok", ikon: "" },
