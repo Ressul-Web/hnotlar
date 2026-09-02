@@ -52,7 +52,10 @@ async function projeleriYukle() {
         </div>
       </div>
       <div class="kart-sag">
-        <div class="kart-alt-bilgi"><span>${proje.revizyon_sayisi} revizyon</span></div>
+        <div class="kart-alt-bilgi">
+          <span>${proje.revizyon_sayisi} revizyon</span>
+          <span>${tarihSaatFormatla(proje.created_at)}</span>
+        </div>
       </div>
     `;
     kart.addEventListener("click", () => revizyonListesineGit(proje));
@@ -115,6 +118,7 @@ async function projeSohbetiniYukle() {
     baloncuk.innerHTML = `
       <span class="sohbet-gonderen">${benMi ? "Sen" : kacir(m.ad_soyad)}</span>
       <span class="sohbet-metin">${kacir(m.mesaj)}</span>
+      <span class="sohbet-zaman">${tarihSaatFormatla(m.created_at)}</span>
     `;
     kutu.appendChild(baloncuk);
   });
@@ -173,6 +177,7 @@ async function revizyonlariYukle() {
               ? '<span class="durum-etiket yapildi">Revizyon Tamamlandı</span>'
               : '<span class="durum-etiket beklemede">Devam Ediyor</span>'
           }
+          <span>${tarihSaatFormatla(rev.created_at)}</span>
         </div>
       </div>
     `;
@@ -252,6 +257,7 @@ async function maddeleriYukle() {
             : ""
         }
         <span class="durum-etiket ${durum.yapildi ? "yapildi" : "beklemede"}">${durum.yapildi ? "Yapıldı" : "Bekliyor"}</span>
+        <span class="sohbet-zaman">${tarihSaatFormatla(madde.created_at)}</span>
       </span>
     `;
     kart.addEventListener("click", () => maddeDetayModaliAc(madde));
@@ -272,7 +278,12 @@ function maddeDetayModaliAc(madde) {
   let yorumHtml = '<p class="bos-mesaj">Henüz yorum yok.</p>';
   if (madde.yorumlar && madde.yorumlar.length > 0) {
     yorumHtml = madde.yorumlar
-      .map((y) => `<div class="yorum-satiri"><strong>${kacir(y.kullanici_adi)}:</strong> ${kacir(y.yorum)}</div>`)
+      .map(
+        (y) =>
+          `<div class="yorum-satiri"><strong>${kacir(y.kullanici_adi)}:</strong> ${kacir(y.yorum)} <span class="sohbet-zaman">${tarihSaatFormatla(
+            y.tarih
+          )}</span></div>`
+      )
       .join("");
   }
 

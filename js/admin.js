@@ -76,6 +76,7 @@ async function projeleriYukle() {
         <div class="kart-alt-bilgi">
           <span>${proje.kullanici_sayisi} kullanıcı</span>
           <span>${proje.revizyon_sayisi} revizyon</span>
+          <span>${tarihSaatFormatla(proje.created_at)}</span>
         </div>
         ${bildirimNoktasiHtml(proje.bildirim)}
       </div>
@@ -128,6 +129,15 @@ document.getElementById("projeyeGeriDonButonu").addEventListener("click", () => 
 // PROJE SOHBETI
 // ============================================================
 let sohbetPollingId = null;
+let sohbetModu = "herkese";
+
+document.querySelectorAll(".sohbet-mod-buton").forEach((buton) => {
+  buton.addEventListener("click", () => {
+    document.querySelectorAll(".sohbet-mod-buton").forEach((b) => b.classList.remove("aktif"));
+    buton.classList.add("aktif");
+    sohbetModu = buton.dataset.mod;
+  });
+});
 
 function sohbetPollingBaslat() {
   sohbetPollingDurdur();
@@ -154,10 +164,13 @@ async function projeSohbetiniYukle() {
   mesajlar.forEach((m) => {
     const benMi = m.kullanici_id === kullanici.id;
     const baloncuk = document.createElement("div");
-    baloncuk.className = `sohbet-baloncuk ${benMi ? "ben" : "diger"}`;
+    baloncuk.className = `sohbet-baloncuk ${benMi ? "ben" : "diger"} ${m.sadece_admin ? "admin-ozel" : ""}`;
     baloncuk.innerHTML = `
-      <span class="sohbet-gonderen">${benMi ? "Sen" : kacir(m.ad_soyad)}</span>
+      <span class="sohbet-gonderen">${benMi ? "Sen" : kacir(m.ad_soyad)}${
+      m.sadece_admin ? ' <span class="sohbet-kilit-etiketi">🔒 sadece adminler</span>' : ""
+    }</span>
       <span class="sohbet-metin">${kacir(m.mesaj)}</span>
+      <span class="sohbet-zaman">${tarihSaatFormatla(m.created_at)}</span>
     `;
     kutu.appendChild(baloncuk);
   });
@@ -170,7 +183,12 @@ document.getElementById("projeSohbetGonderButonu").addEventListener("click", asy
   const mesaj = girisi.value.trim();
   if (!mesaj) return;
   girisi.value = "";
-  await rpc("proje_mesaj_gonder", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId, p_mesaj: mesaj });
+  await rpc("proje_mesaj_gonder", {
+    p_token: kullanici.oturum_token,
+    p_proje_id: aktifProjeId,
+    p_mesaj: mesaj,
+    p_sadece_admin: sohbetModu === "admin",
+  });
   await projeSohbetiniYukle();
   const kutu = document.getElementById("projeSohbetMesajlari");
   kutu.scrollTop = kutu.scrollHeight;
@@ -330,6 +348,7 @@ async function revizyonlariYukle() {
         <div class="kart-alt-bilgi">
           <span>${rev.madde_sayisi} madde</span>
           <span>${rev.yayinda ? "Yayında" : "Taslak"}</span>
+          <span>${tarihSaatFormatla(rev.created_at)}</span>
         </div>
         ${bildirimNoktasiHtml(rev.bildirim)}
       </div>
@@ -497,6 +516,7 @@ async function maddeleriYukle() {
             : '<span class="durum-etiket beklemede">Henüz işaretlenmedi</span>'
         }
         ${madde.yorumlar && madde.yorumlar.length > 0 ? `<span class="durum-etiket">${ikonlar.sohbet} ${madde.yorumlar.length}</span>` : ""}
+        <span class="sohbet-zaman">${tarihSaatFormatla(madde.created_at)}</span>
         ${bildirimNoktasiHtml(madde.bildirim)}
       </span>
     `;
@@ -525,7 +545,9 @@ function maddeDetayModaliAc(madde) {
         (d) =>
           `<span class="durum-etiket ${d.yapildi ? "yapildi" : "beklemede"}">${kacir(d.kullanici_adi)}: ${
             d.yapildi ? "Yaptı" : "Bekliyor"
-          }${d.aciklama ? " — " + kacir(d.aciklama) : ""}</span>`
+          }${d.aciklama ? " — " + kacir(d.aciklama) : ""}${
+            d.yapildi && d.tarih ? " (" + tarihSaatFormatla(d.tarih) + ")" : ""
+          }</span>`
       )
       .join("")}</div>`;
   }
@@ -533,7 +555,12 @@ function maddeDetayModaliAc(madde) {
   let yorumHtml = '<p class="bos-mesaj">Henüz yorum yok.</p>';
   if (madde.yorumlar && madde.yorumlar.length > 0) {
     yorumHtml = `<div class="yorum-listesi">${madde.yorumlar
-      .map((y) => `<div class="yorum-satiri"><strong>${kacir(y.kullanici_adi)}:</strong> ${kacir(y.yorum)}</div>`)
+      .map(
+        (y) =>
+          `<div class="yorum-satiri"><strong>${kacir(y.kullanici_adi)}:</strong> ${kacir(y.yorum)} <span class="sohbet-zaman">${tarihSaatFormatla(
+            y.tarih
+          )}</span></div>`
+      )
       .join("")}</div>`;
   }
 

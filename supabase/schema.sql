@@ -196,8 +196,11 @@ create table if not exists proje_mesajlari (
   proje_id uuid not null references projeler(id) on delete cascade,
   kullanici_id uuid not null references kullanicilar(id),
   mesaj text not null,
+  sadece_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+alter table proje_mesajlari add column if not exists sadece_admin boolean not null default false;
 
 create index if not exists proje_mesajlari_proje_idx on proje_mesajlari(proje_id, created_at);
 
@@ -849,7 +852,7 @@ grant execute on function admin_revizyonlari_getir(text, uuid) to anon, authenti
 drop function if exists admin_maddeleri_getir(text, uuid);
 
 create or replace function admin_maddeleri_getir(p_token text, p_revizyon_id uuid)
-returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, durumlar jsonb, yorumlar jsonb, bildirim text)
+returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, durumlar jsonb, yorumlar jsonb, bildirim text, created_at timestamptz)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -871,7 +874,8 @@ begin
               from madde_durumlari md join kullanicilar k on k.id = md.kullanici_id where md.madde_id = m.id), '[]'::jsonb),
     coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k2.kullanici_adi, 'yorum', my.yorum, 'tarih', my.created_at) order by my.created_at)
               from madde_yorumlari my join kullanicilar k2 on k2.id = my.kullanici_id where my.madde_id = m.id), '[]'::jsonb),
-    madde_bildirim_durumu(m.id, v_admin.id)
+    madde_bildirim_durumu(m.id, v_admin.id),
+    m.created_at
   from maddeler m
   where m.revizyon_id = p_revizyon_id
   order by m.sira;
@@ -952,7 +956,7 @@ grant execute on function kullanici_revizyonlari_getir(text, uuid) to anon, auth
 drop function if exists kullanici_maddeleri_getir(text, uuid);
 
 create or replace function kullanici_maddeleri_getir(p_token text, p_revizyon_id uuid)
-returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, benim_durumum jsonb, yorumlar jsonb)
+returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, benim_durumum jsonb, yorumlar jsonb, created_at timestamptz)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -978,7 +982,8 @@ begin
               from madde_durumlari md where md.madde_id = m.id and md.kullanici_id = v_kullanici.id),
               jsonb_build_object('yapildi', false, 'aciklama', null)),
     coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k.kullanici_adi, 'yorum', my.yorum, 'tarih', my.created_at) order by my.created_at)
-              from madde_yorumlari my join kullanicilar k on k.id = my.kullanici_id where my.madde_id = m.id), '[]'::jsonb)
+              from madde_yorumlari my join kullanicilar k on k.id = my.kullanici_id where my.madde_id = m.id), '[]'::jsonb),
+    m.created_at
   from maddeler m
   where m.revizyon_id = p_revizyon_id
   order by m.sira;
@@ -1080,7 +1085,9 @@ grant execute on function revizyon_isaretle(text, uuid, boolean) to anon, authen
 -- ============================================================
 -- PROJE SOHBETI (admin + o projeye atanan kullanicilar)
 -- ============================================================
-create or replace function proje_mesaj_gonder(p_token text, p_proje_id uuid, p_mesaj text)
+drop function if exists proje_mesaj_gonder(text, uuid, text);
+
+create or replace function proje_mesaj_gonder(p_token text, p_proje_id uuid, p_mesaj text, p_sadece_admin boolean default false)
 returns void
 language plpgsql
 security definer
@@ -1095,16 +1102,18 @@ begin
     raise exception 'Yetkiniz yok';
   end if;
 
-  insert into proje_mesajlari (proje_id, kullanici_id, mesaj)
-  values (p_proje_id, v_kullanici.id, p_mesaj);
+  insert into proje_mesajlari (proje_id, kullanici_id, mesaj, sadece_admin)
+  values (p_proje_id, v_kullanici.id, p_mesaj, (p_sadece_admin and v_kullanici.rol = 'admin'));
 end;
 $$;
 
-revoke all on function proje_mesaj_gonder(text, uuid, text) from public;
-grant execute on function proje_mesaj_gonder(text, uuid, text) to anon, authenticated;
+revoke all on function proje_mesaj_gonder(text, uuid, text, boolean) from public;
+grant execute on function proje_mesaj_gonder(text, uuid, text, boolean) to anon, authenticated;
+
+drop function if exists proje_mesajlarini_getir(text, uuid);
 
 create or replace function proje_mesajlarini_getir(p_token text, p_proje_id uuid)
-returns table (id uuid, kullanici_id uuid, kullanici_adi text, ad_soyad text, rol text, mesaj text, created_at timestamptz)
+returns table (id uuid, kullanici_id uuid, kullanici_adi text, ad_soyad text, rol text, mesaj text, sadece_admin boolean, created_at timestamptz)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -1119,10 +1128,11 @@ begin
   end if;
 
   return query
-  select pm.id, pm.kullanici_id, k.kullanici_adi, k.ad_soyad, k.rol, pm.mesaj, pm.created_at
+  select pm.id, pm.kullanici_id, k.kullanici_adi, k.ad_soyad, k.rol, pm.mesaj, pm.sadece_admin, pm.created_at
   from proje_mesajlari pm
   join kullanicilar k on k.id = pm.kullanici_id
   where pm.proje_id = p_proje_id
+    and (pm.sadece_admin = false or v_kullanici.rol = 'admin')
   order by pm.created_at asc;
 end;
 $$;

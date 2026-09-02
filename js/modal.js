@@ -1,3 +1,9 @@
+function tarihSaatFormatla(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("tr-TR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 function kacir(metin) {
   const div = document.createElement("div");
   div.textContent = metin == null ? "" : metin;
@@ -110,10 +116,36 @@ function resimGoster(url) {
         overlay.querySelector(".lightbox-resim").classList.remove("buyutuldu");
       }
     });
-    overlay.querySelector(".lightbox-resim").addEventListener("dblclick", (e2) => {
+    const resim = overlay.querySelector(".lightbox-resim");
+
+    resim.addEventListener("dblclick", (e2) => {
       e2.stopPropagation();
       overlay.classList.toggle("buyutulmus");
-      e2.target.classList.toggle("buyutuldu");
+      resim.classList.toggle("buyutuldu");
+    });
+
+    let surukleniyor = false;
+    let sonX = 0;
+    let sonY = 0;
+
+    resim.addEventListener("mousedown", (e2) => {
+      if (!resim.classList.contains("buyutuldu")) return;
+      surukleniyor = true;
+      sonX = e2.clientX;
+      sonY = e2.clientY;
+      e2.preventDefault();
+    });
+
+    document.addEventListener("mousemove", (e2) => {
+      if (!surukleniyor) return;
+      overlay.scrollLeft -= e2.clientX - sonX;
+      overlay.scrollTop -= e2.clientY - sonY;
+      sonX = e2.clientX;
+      sonY = e2.clientY;
+    });
+
+    document.addEventListener("mouseup", () => {
+      surukleniyor = false;
     });
   }
   overlay.querySelector(".lightbox-resim").src = url;
