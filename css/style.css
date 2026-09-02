@@ -486,6 +486,10 @@
   transform: translateY(-2px);
 }
 
+.kart-listesi .kart:nth-child(even) {
+  background: var(--renk-gri-50);
+}
+
 .kart-sol {
   display: flex;
   align-items: center;
@@ -1056,8 +1060,12 @@ body.modal-kilit {
 
 .madde-kart:hover {
   box-shadow: var(--golge-orta);
-  border-color: #93c5fd;
+  border-color: var(--renk-birincil);
   transform: translateY(-1px);
+}
+
+.madde-kart-listesi .madde-kart:nth-child(even) {
+  background: var(--renk-gri-50);
 }
 
 .madde-kart-baslik {
