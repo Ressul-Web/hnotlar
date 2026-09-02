@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hnotlar | Admin Paneli</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="admin-body">
+  <header class="admin-header">
+    <div class="giris-logo">
+      <span class="logo-nokta"></span>
+      <h1>hnotlar</h1>
+    </div>
+    <div class="admin-kullanici">
+      <span id="girisYapanAdSoyad"></span>
+      <button id="cikisButonu" class="ikincil-buton">Çıkış</button>
+    </div>
+  </header>
+
+  <nav class="admin-tabs">
+    <button class="tab-buton aktif" data-tab="projeler">Projeler</button>
+    <button class="tab-buton" data-tab="kullanicilar">Kullanıcılar</button>
+    <button class="tab-buton" data-tab="firmalar">Firmalar</button>
+  </nav>
+
+  <main class="admin-icerik">
+    <section id="tab-projeler" class="tab-panel aktif">
+      <div id="projeListesiGorunumu">
+        <div class="panel-baslik-satiri">
+          <h2>Projeler</h2>
+          <button id="yeniProjeAcButonu" class="birincil-buton">+ Yeni Proje</button>
+        </div>
+        <div id="yeniProjeFormu" class="form-kutusu gizli">
+          <input type="text" id="yeniProjeAd" placeholder="Proje adı" />
+          <textarea id="yeniProjeAciklama" placeholder="Açıklama (opsiyonel)"></textarea>
+          <div class="form-buton-satiri">
+            <button id="yeniProjeKaydetButonu" class="birincil-buton">Kaydet</button>
+            <button id="yeniProjeIptalButonu" class="ikincil-buton">İptal</button>
+          </div>
+        </div>
+        <div id="projeListesi" class="kart-listesi"></div>
+      </div>
+
+      <div id="projeDetayGorunumu" class="gizli">
+        <button id="projeyeGeriDonButonu" class="geri-buton">← Projelere dön</button>
+        <h2 id="projeDetayBaslik"></h2>
+        <p id="projeDetayAciklama" class="aciklama-metni"></p>
+
+        <div class="detay-bolum">
+          <div class="panel-baslik-satiri">
+            <h3>Atanan Kullanıcılar</h3>
+          </div>
+          <div id="atananKullanicilar" class="etiket-listesi"></div>
+          <div class="form-buton-satiri">
+            <select id="kullaniciAtaSecim"></select>
+            <button id="kullaniciAtaButonu" class="ikincil-buton">Ata</button>
+          </div>
+        </div>
+
+        <div class="detay-bolum">
+          <div class="panel-baslik-satiri">
+            <h3>Revizyonlar</h3>
+            <button id="yeniRevizyonAcButonu" class="birincil-buton">+ Yeni Revizyon</button>
+          </div>
+          <div id="yeniRevizyonFormu" class="form-kutusu gizli">
+            <input type="text" id="yeniRevizyonBaslik" placeholder="Revizyon başlığı" />
+            <textarea id="yeniRevizyonAciklama" placeholder="Açıklama (opsiyonel)"></textarea>
+            <div class="form-buton-satiri">
+              <button id="yeniRevizyonKaydetButonu" class="birincil-buton">Kaydet</button>
+              <button id="yeniRevizyonIptalButonu" class="ikincil-buton">İptal</button>
+            </div>
+          </div>
+          <div id="revizyonListesi" class="kart-listesi"></div>
+        </div>
+      </div>
+
+      <div id="revizyonDetayGorunumu" class="gizli">
+        <button id="revizyonaGeriDonButonu" class="geri-buton">← Revizyonlara dön</button>
+        <h2 id="revizyonDetayBaslik"></h2>
+        <p id="revizyonDetayAciklama" class="aciklama-metni"></p>
+
+        <div class="panel-baslik-satiri">
+          <h3>Maddeler</h3>
+          <button id="yeniMaddeAcButonu" class="birincil-buton">+ Yeni Madde</button>
+        </div>
+        <div id="yeniMaddeFormu" class="form-kutusu gizli">
+          <textarea id="yeniMaddeMetin" placeholder="Madde metni"></textarea>
+          <input type="url" id="yeniMaddeMedyaUrl" placeholder="Görsel/Video URL (opsiyonel)" />
+          <select id="yeniMaddeMedyaTipi">
+            <option value="">Medya yok</option>
+            <option value="gorsel">Görsel</option>
+            <option value="video">Video</option>
+            <option value="metin">Ek Metin/Dosya</option>
+          </select>
+          <div class="form-buton-satiri">
+            <button id="yeniMaddeKaydetButonu" class="birincil-buton">Kaydet</button>
+            <button id="yeniMaddeIptalButonu" class="ikincil-buton">İptal</button>
+          </div>
+        </div>
+        <div id="maddeListesi" class="madde-listesi"></div>
+      </div>
+    </section>
+
+    <section id="tab-kullanicilar" class="tab-panel">
+      <div class="panel-baslik-satiri">
+        <h2>Kullanıcılar</h2>
+        <button id="yeniKullaniciAcButonu" class="birincil-buton">+ Yeni Kullanıcı</button>
+      </div>
+      <div id="yeniKullaniciFormu" class="form-kutusu gizli">
+        <input type="text" id="yeniKullaniciAdi" placeholder="Kullanıcı adı" />
+        <input type="password" id="yeniKullaniciSifre" placeholder="Şifre" />
+        <input type="text" id="yeniKullaniciAdSoyad" placeholder="Ad Soyad" />
+        <select id="yeniKullaniciRol">
+          <option value="personel">Personel</option>
+          <option value="firma">Firma</option>
+          <option value="patron">Patron</option>
+          <option value="admin">Admin</option>
+        </select>
+        <select id="yeniKullaniciFirma">
+          <option value="">Firma yok</option>
+        </select>
+        <div class="form-buton-satiri">
+          <button id="yeniKullaniciKaydetButonu" class="birincil-buton">Kaydet</button>
+          <button id="yeniKullaniciIptalButonu" class="ikincil-buton">İptal</button>
+        </div>
+      </div>
+      <div id="kullaniciTablo" class="tablo-kutusu"></div>
+    </section>
+
+    <section id="tab-firmalar" class="tab-panel">
+      <div class="panel-baslik-satiri">
+        <h2>Firmalar</h2>
+        <button id="yeniFirmaAcButonu" class="birincil-buton">+ Yeni Firma</button>
+      </div>
+      <div id="yeniFirmaFormu" class="form-kutusu gizli">
+        <input type="text" id="yeniFirmaAd" placeholder="Firma adı" />
+        <div class="form-buton-satiri">
+          <button id="yeniFirmaKaydetButonu" class="birincil-buton">Kaydet</button>
+          <button id="yeniFirmaIptalButonu" class="ikincil-buton">İptal</button>
+        </div>
+      </div>
+      <div id="firmaListesi" class="kart-listesi"></div>
+    </section>
+  </main>
+
+  <p id="genelHataMesaji" class="genel-hata gizli"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/oturum.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

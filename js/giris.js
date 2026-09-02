@@ -35,6 +35,12 @@ form.addEventListener("submit", async function (e) {
     return;
   }
 
-  sessionStorage.setItem("hnotlar_kullanici", JSON.stringify(data[0]));
-  window.location.href = "anasayfa.html";
+  const kullanici = data[0];
+  sessionStorage.setItem("hnotlar_kullanici", JSON.stringify(kullanici));
+
+  if (kullanici.rol === "admin") {
+    window.location.href = "admin.html";
+  } else {
+    window.location.href = "anasayfa.html";
+  }
 });
