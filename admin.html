@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>hnotlar | Admin Paneli</title>
+  <title>H-NOTLAR | Admin Paneli</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="admin-body">
   <header class="admin-header">
     <div class="giris-logo">
       <span class="logo-nokta"></span>
-      <h1>hnotlar</h1>
+      <h1>H-<span class="logo-vurgu">NOTLAR</span></h1>
     </div>
     <div class="admin-kullanici">
       <span id="girisYapanAdSoyad"></span>
@@ -21,7 +24,6 @@
   <nav class="admin-tabs">
     <button class="tab-buton aktif" data-tab="projeler">Projeler</button>
     <button class="tab-buton" data-tab="kullanicilar">Kullanıcılar</button>
-    <button class="tab-buton" data-tab="firmalar">Firmalar</button>
   </nav>
 
   <main class="admin-icerik">
@@ -125,21 +127,6 @@
         </div>
       </div>
       <div id="kullaniciTablo" class="tablo-kutusu"></div>
-    </section>
-
-    <section id="tab-firmalar" class="tab-panel">
-      <div class="panel-baslik-satiri">
-        <h2>Firmalar</h2>
-        <button id="yeniFirmaAcButonu" class="birincil-buton">+ Yeni Firma</button>
-      </div>
-      <div id="yeniFirmaFormu" class="form-kutusu gizli">
-        <input type="text" id="yeniFirmaAd" placeholder="Firma adı" />
-        <div class="form-buton-satiri">
-          <button id="yeniFirmaKaydetButonu" class="birincil-buton">Kaydet</button>
-          <button id="yeniFirmaIptalButonu" class="ikincil-buton">İptal</button>
-        </div>
-      </div>
-      <div id="firmaListesi" class="kart-listesi"></div>
     </section>
   </main>
 

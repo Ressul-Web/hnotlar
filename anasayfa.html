@@ -3,13 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>hnotlar | Anasayfa</title>
+  <title>H-NOTLAR | Anasayfa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="anasayfa-body">
-  <div class="anasayfa-wrapper">
-    <h1>Anasayfa</h1>
-    <p>Buraya notlar, görevler ve dosya takibi eklenecek.</p>
-  </div>
+<body class="admin-body">
+  <header class="admin-header">
+    <div class="giris-logo">
+      <span class="logo-nokta"></span>
+      <h1>H-<span class="logo-vurgu">NOTLAR</span></h1>
+    </div>
+    <div class="admin-kullanici">
+      <span id="girisYapanAdSoyad"></span>
+      <button id="cikisButonu" class="ikincil-buton">Çıkış</button>
+    </div>
+  </header>
+
+  <main class="admin-icerik">
+    <div id="projeListesiGorunumu">
+      <div class="panel-baslik-satiri">
+        <h2>Projelerim</h2>
+      </div>
+      <div id="projeListesi" class="kart-listesi"></div>
+    </div>
+
+    <div id="revizyonListesiGorunumu" class="gizli">
+      <button id="projeyeGeriDonButonu" class="geri-buton">← Projelere dön</button>
+      <h2 id="revizyonListesiBaslik"></h2>
+      <p id="revizyonListesiAciklama" class="aciklama-metni"></p>
+      <div id="revizyonListesi" class="kart-listesi"></div>
+    </div>
+
+    <div id="maddeListesiGorunumu" class="gizli">
+      <button id="revizyonaGeriDonButonu" class="geri-buton">← Revizyonlara dön</button>
+      <div class="panel-baslik-satiri">
+        <h2 id="maddeListesiBaslik"></h2>
+        <button id="revizyonTamamlaButonu" class="birincil-buton">Revizyonu Tamamlandı İşaretle</button>
+      </div>
+      <p id="maddeListesiAciklama" class="aciklama-metni"></p>
+      <div id="maddeListesi" class="madde-listesi"></div>
+    </div>
+  </main>
+
+  <p id="genelHataMesaji" class="genel-hata gizli"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/oturum.js"></script>
+  <script src="js/anasayfa.js"></script>
 </body>
 </html>

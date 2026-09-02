@@ -121,6 +121,18 @@ create table if not exists madde_yorumlari (
   created_at timestamptz not null default now()
 );
 
+-- ============================================================
+-- REVIZYON_DURUMLARI (her kullanici bir revizyonu komple tamamlandi diye isaretler)
+-- ============================================================
+create table if not exists revizyon_durumlari (
+  id uuid primary key default gen_random_uuid(),
+  revizyon_id uuid not null references revizyonlar(id) on delete cascade,
+  kullanici_id uuid not null references kullanicilar(id) on delete cascade,
+  yapildi boolean not null default false,
+  yapildi_tarihi timestamptz,
+  unique (revizyon_id, kullanici_id)
+);
+
 create index if not exists proje_kullanicilari_proje_idx on proje_kullanicilari(proje_id);
 create index if not exists proje_kullanicilari_kullanici_idx on proje_kullanicilari(kullanici_id);
 create index if not exists revizyonlar_proje_idx on revizyonlar(proje_id);
@@ -129,6 +141,7 @@ create index if not exists madde_medya_madde_idx on madde_medya(madde_id, sira);
 create index if not exists madde_durumlari_madde_idx on madde_durumlari(madde_id);
 create index if not exists madde_durumlari_kullanici_idx on madde_durumlari(kullanici_id);
 create index if not exists madde_yorumlari_madde_idx on madde_yorumlari(madde_id, created_at);
+create index if not exists revizyon_durumlari_revizyon_idx on revizyon_durumlari(revizyon_id);
 
 -- ============================================================
 -- RLS: tum tablolarda kapali erisim (varsayilan reddet)
@@ -144,6 +157,7 @@ alter table maddeler enable row level security;
 alter table madde_medya enable row level security;
 alter table madde_durumlari enable row level security;
 alter table madde_yorumlari enable row level security;
+alter table revizyon_durumlari enable row level security;
 
 -- ============================================================
 -- OTURUM DOGRULAMA (ic kullanim - anon'a acilmiyor)
@@ -186,6 +200,24 @@ begin
     raise exception 'Yetkiniz yok';
   end if;
   return v_kullanici;
+end;
+$$;
+
+create or replace function proje_erisim_var_mi(p_kullanici_id uuid, p_proje_id uuid, p_rol text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if p_rol = 'admin' then
+    return true;
+  end if;
+
+  return exists (
+    select 1 from proje_kullanicilari pk
+    where pk.proje_id = p_proje_id and pk.kullanici_id = p_kullanici_id
+  );
 end;
 $$;
 
@@ -522,8 +554,10 @@ $$;
 revoke all on function admin_proje_kullanicilari_getir(text, uuid) from public;
 grant execute on function admin_proje_kullanicilari_getir(text, uuid) to anon, authenticated;
 
+drop function if exists admin_revizyonlari_getir(text, uuid);
+
 create or replace function admin_revizyonlari_getir(p_token text, p_proje_id uuid)
-returns table (id uuid, baslik text, aciklama text, created_at timestamptz, madde_sayisi bigint)
+returns table (id uuid, baslik text, aciklama text, created_at timestamptz, madde_sayisi bigint, tamamlayanlar jsonb)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -533,7 +567,9 @@ begin
 
   return query
   select r.id, r.baslik, r.aciklama, r.created_at,
-    (select count(*) from maddeler m where m.revizyon_id = r.id)
+    (select count(*) from maddeler m where m.revizyon_id = r.id),
+    coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k.kullanici_adi, 'yapildi', rd.yapildi, 'tarih', rd.yapildi_tarihi))
+              from revizyon_durumlari rd join kullanicilar k on k.id = rd.kullanici_id where rd.revizyon_id = r.id), '[]'::jsonb)
   from revizyonlar r
   where r.proje_id = p_proje_id
   order by r.created_at desc;
@@ -571,3 +607,199 @@ $$;
 
 revoke all on function admin_maddeleri_getir(text, uuid) from public;
 grant execute on function admin_maddeleri_getir(text, uuid) to anon, authenticated;
+
+-- ============================================================
+-- KULLANICI TARAFI (personel / firma / patron)
+-- ============================================================
+create or replace function kullanici_projelerini_getir(p_token text)
+returns table (id uuid, ad text, aciklama text, created_at timestamptz, revizyon_sayisi bigint)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  return query
+  select p.id, p.ad, p.aciklama, p.created_at,
+    (select count(*) from revizyonlar r where r.proje_id = p.id)
+  from projeler p
+  join proje_kullanicilari pk on pk.proje_id = p.id
+  where pk.kullanici_id = v_kullanici.id
+  order by p.created_at desc;
+end;
+$$;
+
+revoke all on function kullanici_projelerini_getir(text) from public;
+grant execute on function kullanici_projelerini_getir(text) to anon, authenticated;
+
+create or replace function kullanici_revizyonlari_getir(p_token text, p_proje_id uuid)
+returns table (
+  id uuid,
+  baslik text,
+  aciklama text,
+  created_at timestamptz,
+  madde_sayisi bigint,
+  tamamlanan_madde_sayisi bigint,
+  revizyon_tamamlandi boolean
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  if not proje_erisim_var_mi(v_kullanici.id, p_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  return query
+  select
+    r.id, r.baslik, r.aciklama, r.created_at,
+    (select count(*) from maddeler m where m.revizyon_id = r.id),
+    (select count(*) from maddeler m
+       join madde_durumlari md on md.madde_id = m.id
+       where m.revizyon_id = r.id and md.kullanici_id = v_kullanici.id and md.yapildi = true),
+    coalesce((select rd.yapildi from revizyon_durumlari rd
+                where rd.revizyon_id = r.id and rd.kullanici_id = v_kullanici.id), false)
+  from revizyonlar r
+  where r.proje_id = p_proje_id
+  order by r.created_at desc;
+end;
+$$;
+
+revoke all on function kullanici_revizyonlari_getir(text, uuid) from public;
+grant execute on function kullanici_revizyonlari_getir(text, uuid) to anon, authenticated;
+
+create or replace function kullanici_maddeleri_getir(p_token text, p_revizyon_id uuid)
+returns table (id uuid, metin text, sira integer, medya jsonb, benim_durumum jsonb, yorumlar jsonb)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+  v_proje_id uuid;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  select r.proje_id into v_proje_id from revizyonlar r where r.id = p_revizyon_id;
+
+  if not proje_erisim_var_mi(v_kullanici.id, v_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  return query
+  select
+    m.id, m.metin, m.sira,
+    coalesce((select jsonb_agg(jsonb_build_object('id', mm.id, 'url', mm.medya_url, 'tip', mm.medya_tipi) order by mm.sira)
+              from madde_medya mm where mm.madde_id = m.id), '[]'::jsonb),
+    coalesce((select jsonb_build_object('yapildi', md.yapildi, 'aciklama', md.yapildi_aciklama)
+              from madde_durumlari md where md.madde_id = m.id and md.kullanici_id = v_kullanici.id),
+              jsonb_build_object('yapildi', false, 'aciklama', null)),
+    coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k.kullanici_adi, 'yorum', my.yorum, 'tarih', my.created_at) order by my.created_at)
+              from madde_yorumlari my join kullanicilar k on k.id = my.kullanici_id where my.madde_id = m.id), '[]'::jsonb)
+  from maddeler m
+  where m.revizyon_id = p_revizyon_id
+  order by m.sira;
+end;
+$$;
+
+revoke all on function kullanici_maddeleri_getir(text, uuid) from public;
+grant execute on function kullanici_maddeleri_getir(text, uuid) to anon, authenticated;
+
+create or replace function madde_isaretle(p_token text, p_madde_id uuid, p_yapildi boolean, p_aciklama text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+  v_proje_id uuid;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  select r.proje_id into v_proje_id
+  from maddeler m join revizyonlar r on r.id = m.revizyon_id
+  where m.id = p_madde_id;
+
+  if not proje_erisim_var_mi(v_kullanici.id, v_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  insert into madde_durumlari (madde_id, kullanici_id, yapildi, yapildi_aciklama, yapildi_tarihi)
+  values (p_madde_id, v_kullanici.id, p_yapildi, p_aciklama, case when p_yapildi then now() else null end)
+  on conflict (madde_id, kullanici_id) do update
+    set yapildi = excluded.yapildi,
+        yapildi_aciklama = excluded.yapildi_aciklama,
+        yapildi_tarihi = excluded.yapildi_tarihi;
+end;
+$$;
+
+revoke all on function madde_isaretle(text, uuid, boolean, text) from public;
+grant execute on function madde_isaretle(text, uuid, boolean, text) to anon, authenticated;
+
+create or replace function madde_yorum_ekle(p_token text, p_madde_id uuid, p_yorum text)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+  v_proje_id uuid;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  select r.proje_id into v_proje_id
+  from maddeler m join revizyonlar r on r.id = m.revizyon_id
+  where m.id = p_madde_id;
+
+  if not proje_erisim_var_mi(v_kullanici.id, v_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  insert into madde_yorumlari (madde_id, kullanici_id, yorum)
+  values (p_madde_id, v_kullanici.id, p_yorum);
+end;
+$$;
+
+revoke all on function madde_yorum_ekle(text, uuid, text) from public;
+grant execute on function madde_yorum_ekle(text, uuid, text) to anon, authenticated;
+
+create or replace function revizyon_isaretle(p_token text, p_revizyon_id uuid, p_yapildi boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+  v_proje_id uuid;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  select r.proje_id into v_proje_id from revizyonlar r where r.id = p_revizyon_id;
+
+  if not proje_erisim_var_mi(v_kullanici.id, v_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  insert into revizyon_durumlari (revizyon_id, kullanici_id, yapildi, yapildi_tarihi)
+  values (p_revizyon_id, v_kullanici.id, p_yapildi, case when p_yapildi then now() else null end)
+  on conflict (revizyon_id, kullanici_id) do update
+    set yapildi = excluded.yapildi,
+        yapildi_tarihi = excluded.yapildi_tarihi;
+end;
+$$;
+
+revoke all on function revizyon_isaretle(text, uuid, boolean) from public;
+grant execute on function revizyon_isaretle(text, uuid, boolean) to anon, authenticated;
+
+NOTIFY pgrst, 'reload schema';

@@ -193,10 +193,22 @@ async function revizyonlariYukle() {
   revizyonlar.forEach((rev) => {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
+
+    const tamamlayanlar = rev.tamamlayanlar || [];
+    const tamamlayanlarHtml = tamamlayanlar
+      .map(
+        (t) =>
+          `<span class="durum-etiket ${t.yapildi ? "yapildi" : "beklemede"}">${kacir(t.kullanici_adi)}: ${
+            t.yapildi ? "Tamamladı" : "Bekliyor"
+          }</span>`
+      )
+      .join("");
+
     kart.innerHTML = `
       <h3>${kacir(rev.baslik)}</h3>
       <p>${kacir(rev.aciklama || "")}</p>
       <div class="kart-alt-bilgi"><span>${rev.madde_sayisi} madde</span></div>
+      ${tamamlayanlarHtml ? `<div class="durum-listesi">${tamamlayanlarHtml}</div>` : ""}
     `;
     kart.addEventListener("click", () => revizyonDetayinaGit(rev));
     liste.appendChild(kart);
@@ -376,44 +388,9 @@ document.getElementById("yeniKullaniciKaydetButonu").addEventListener("click", a
 });
 
 // ============================================================
-// FIRMALAR
-// ============================================================
-async function firmalariYukle() {
-  const firmalar = await rpc("admin_firmalari_getir", { p_token: kullanici.oturum_token });
-  const liste = document.getElementById("firmaListesi");
-  liste.innerHTML = "";
-  if (!firmalar || firmalar.length === 0) {
-    liste.innerHTML = '<p class="bos-mesaj">Henüz firma yok.</p>';
-    return;
-  }
-  firmalar.forEach((f) => {
-    const kart = document.createElement("div");
-    kart.className = "kart";
-    kart.innerHTML = `<h3>${kacir(f.ad)}</h3>`;
-    liste.appendChild(kart);
-  });
-}
-
-document.getElementById("yeniFirmaAcButonu").addEventListener("click", () => {
-  document.getElementById("yeniFirmaFormu").classList.toggle("gizli");
-});
-document.getElementById("yeniFirmaIptalButonu").addEventListener("click", () => {
-  document.getElementById("yeniFirmaFormu").classList.add("gizli");
-});
-document.getElementById("yeniFirmaKaydetButonu").addEventListener("click", async () => {
-  const ad = document.getElementById("yeniFirmaAd").value.trim();
-  if (!ad) return hataGoster("Firma adı gerekli.");
-  await rpc("firma_ekle", { p_token: kullanici.oturum_token, p_ad: ad });
-  document.getElementById("yeniFirmaAd").value = "";
-  document.getElementById("yeniFirmaFormu").classList.add("gizli");
-  firmalariYukle();
-});
-
-// ============================================================
 // BASLANGIC
 // ============================================================
 if (kullanici) {
   projeleriYukle();
   kullanicilariYukle();
-  firmalariYukle();
 }
