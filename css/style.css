@@ -1459,6 +1459,29 @@ body.modal-kilit {
   color: var(--renk-sari-metin);
 }
 
+.sohbet-okunmadi-cizgisi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.sohbet-okunmadi-cizgisi::before,
+.sohbet-okunmadi-cizgisi::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--renk-kirmizi);
+  opacity: 0.35;
+}
+
+.sohbet-okunmadi-cizgisi span {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--renk-kirmizi);
+  white-space: nowrap;
+}
+
 .sohbet-zaman {
   font-size: 10px;
   color: var(--renk-gri-400);
@@ -1538,4 +1561,133 @@ body.modal-kilit {
   border-radius: var(--radius-kucuk);
   font-size: 13px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+}
+
+/* ============================================================
+   MOBIL UYUM
+   ============================================================ */
+@media (max-width: 640px) {
+  .giris-card {
+    padding: 32px 22px;
+  }
+
+  .admin-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-header .giris-logo h1 {
+    font-size: 17px;
+  }
+
+  .admin-kullanici {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .admin-kullanici .ikincil-buton {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  .admin-tabs {
+    padding: 10px 16px;
+    overflow-x: auto;
+  }
+
+  .admin-icerik {
+    padding: 20px 14px 40px;
+  }
+
+  .panel-baslik-satiri {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .detay-baslik-satiri {
+    flex-wrap: wrap;
+  }
+
+  .detay-baslik-satiri h2 {
+    font-size: 18px;
+  }
+
+  .kart {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .kart-sol {
+    width: 100%;
+  }
+
+  .kart-sol-metin p {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .kart-sag {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .madde-kart {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .madde-kart-sag {
+    flex-wrap: wrap;
+  }
+
+  .form-buton-satiri {
+    flex-wrap: wrap;
+  }
+
+  .form-buton-satiri button {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .atama-satiri {
+    flex-wrap: wrap;
+  }
+
+  .atama-satiri .atama-secim-alani {
+    min-width: 100%;
+  }
+
+  .atama-satiri button {
+    width: 100%;
+  }
+
+  .tablo-kutusu {
+    overflow-x: auto;
+  }
+
+  .tablo-kutusu table {
+    min-width: 480px;
+  }
+
+  .modal-kutu {
+    padding: 22px 18px;
+    max-height: 92vh;
+  }
+
+  .modal-baslik {
+    font-size: 17px;
+    margin-right: 24px;
+  }
+
+  .proje-sohbet {
+    height: 60vh;
+  }
+
+  .kart-alt-bilgi {
+    flex-wrap: wrap;
+  }
 }

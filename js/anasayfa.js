@@ -74,6 +74,8 @@ async function revizyonListesineGit(proje) {
   document.getElementById("revizyonListesiBaslik").textContent = proje.ad;
   document.getElementById("revizyonListesiAciklama").textContent = proje.aciklama || "";
 
+  sohbetOkumaCizgisi = undefined;
+  sohbetIlkYukleme = false;
   await Promise.all([revizyonlariYukle(), projeSohbetiniYukle()]);
   sohbetPollingBaslat();
 }
@@ -90,6 +92,9 @@ document.getElementById("projeyeGeriDonButonu").addEventListener("click", () => 
 // PROJE SOHBETI
 // ============================================================
 let sohbetPollingId = null;
+let sonMesajlar = [];
+let sohbetOkumaCizgisi;
+let sohbetIlkYukleme = false;
 
 function sohbetPollingBaslat() {
   sohbetPollingDurdur();
@@ -104,17 +109,40 @@ function sohbetPollingDurdur() {
 }
 
 async function projeSohbetiniYukle() {
+  if (sohbetOkumaCizgisi === undefined) {
+    sohbetOkumaCizgisi = await rpc("proje_sohbet_son_gorulme_getir", {
+      p_token: kullanici.oturum_token,
+      p_proje_id: aktifProjeId,
+    });
+  }
   rpc("proje_mesaj_gorulme_isaretle", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId }).catch(() => {});
-  const mesajlar = await rpc("proje_mesajlarini_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
+  sonMesajlar = await rpc("proje_mesajlarini_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
+
   const kutu = document.getElementById("projeSohbetMesajlari");
   const enAlttaMi = kutu.scrollTop + kutu.clientHeight >= kutu.scrollHeight - 20;
 
   kutu.innerHTML = "";
-  if (!mesajlar || mesajlar.length === 0) {
+  if (!sonMesajlar || sonMesajlar.length === 0) {
     kutu.innerHTML = '<p class="bos-mesaj">Henüz mesaj yok.</p>';
     return;
   }
-  mesajlar.forEach((m) => {
+
+  const cizgiZamani = sohbetOkumaCizgisi ? new Date(sohbetOkumaCizgisi).getTime() : null;
+  let cizgiElementi = null;
+
+  sonMesajlar.forEach((m) => {
+    if (
+      !cizgiElementi &&
+      cizgiZamani !== null &&
+      m.kullanici_id !== kullanici.id &&
+      new Date(m.created_at).getTime() > cizgiZamani
+    ) {
+      cizgiElementi = document.createElement("div");
+      cizgiElementi.className = "sohbet-okunmadi-cizgisi";
+      cizgiElementi.innerHTML = "<span>Yeni mesajlar</span>";
+      kutu.appendChild(cizgiElementi);
+    }
+
     const benMi = m.kullanici_id === kullanici.id;
     const renk = benMi ? null : kullaniciRengiAl(m.kullanici_id);
     const baloncuk = document.createElement("div");
@@ -127,7 +155,16 @@ async function projeSohbetiniYukle() {
     kutu.appendChild(baloncuk);
   });
 
-  if (enAlttaMi) kutu.scrollTop = kutu.scrollHeight;
+  if (!sohbetIlkYukleme) {
+    sohbetIlkYukleme = true;
+    if (cizgiElementi) {
+      cizgiElementi.scrollIntoView({ block: "center" });
+    } else {
+      kutu.scrollTop = kutu.scrollHeight;
+    }
+  } else if (enAlttaMi) {
+    kutu.scrollTop = kutu.scrollHeight;
+  }
 }
 
 document.getElementById("projeSohbetGonderButonu").addEventListener("click", async () => {

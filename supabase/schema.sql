@@ -306,6 +306,7 @@ set search_path = public, extensions
 as $$
 declare
   v_son_gorulme timestamptz;
+  v_madde_olusturuldu timestamptz;
 begin
   select mg.son_gorulme into v_son_gorulme
   from madde_gorulme mg
@@ -320,6 +321,11 @@ begin
     where my.madde_id = p_madde_id and my.created_at > v_son_gorulme
   ) then
     return 'kirmizi';
+  end if;
+
+  select m.created_at into v_madde_olusturuldu from maddeler m where m.id = p_madde_id;
+  if v_madde_olusturuldu > v_son_gorulme then
+    return 'yesil';
   end if;
 
   if exists (
@@ -1234,5 +1240,32 @@ $$;
 
 revoke all on function proje_mesaj_gorulme_isaretle(text, uuid) from public;
 grant execute on function proje_mesaj_gorulme_isaretle(text, uuid) to anon, authenticated;
+
+create or replace function proje_sohbet_son_gorulme_getir(p_token text, p_proje_id uuid)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+  v_son_gorulme timestamptz;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  if not proje_erisim_var_mi(v_kullanici.id, p_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  select son_gorulme into v_son_gorulme
+  from proje_mesaj_gorulme
+  where proje_id = p_proje_id and kullanici_id = v_kullanici.id;
+
+  return v_son_gorulme;
+end;
+$$;
+
+revoke all on function proje_sohbet_son_gorulme_getir(text, uuid) from public;
+grant execute on function proje_sohbet_son_gorulme_getir(text, uuid) to anon, authenticated;
 
 NOTIFY pgrst, 'reload schema';
