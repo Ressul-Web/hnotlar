@@ -98,10 +98,36 @@ create table if not exists madde_medya (
   id uuid primary key default gen_random_uuid(),
   madde_id uuid not null references maddeler(id) on delete cascade,
   medya_url text not null,
-  medya_tipi text not null check (medya_tipi in ('metin', 'gorsel', 'video')),
+  medya_tipi text not null check (medya_tipi in ('gorsel', 'video', 'word', 'excel', 'pdf', 'url')),
   sira integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+alter table madde_medya drop constraint if exists madde_medya_medya_tipi_check;
+alter table madde_medya add constraint madde_medya_medya_tipi_check
+  check (medya_tipi in ('gorsel', 'video', 'word', 'excel', 'pdf', 'url'));
+
+-- ============================================================
+-- STORAGE: madde-dosyalari bucket'i (gorsel/video/word/excel/pdf yuklemeleri)
+-- ============================================================
+insert into storage.buckets (id, name, public)
+values ('madde-dosyalari', 'madde-dosyalari', true)
+on conflict (id) do nothing;
+
+drop policy if exists "madde_dosyalari_herkes_okur" on storage.objects;
+create policy "madde_dosyalari_herkes_okur"
+  on storage.objects for select
+  using (bucket_id = 'madde-dosyalari');
+
+drop policy if exists "madde_dosyalari_herkes_yukler" on storage.objects;
+create policy "madde_dosyalari_herkes_yukler"
+  on storage.objects for insert
+  with check (bucket_id = 'madde-dosyalari');
+
+drop policy if exists "madde_dosyalari_herkes_siler" on storage.objects;
+create policy "madde_dosyalari_herkes_siler"
+  on storage.objects for delete
+  using (bucket_id = 'madde-dosyalari');
 
 -- ============================================================
 -- MADDE_DURUMLARI (her kullanici kendi maddesini ayri isaretler)

@@ -13,12 +13,6 @@ function hataGoster(mesaj) {
   setTimeout(() => genelHataMesaji.classList.add("gizli"), 4000);
 }
 
-function kacir(metin) {
-  const div = document.createElement("div");
-  div.textContent = metin == null ? "" : metin;
-  return div.innerHTML;
-}
-
 function bildirimNoktasiHtml(bildirim) {
   return bildirim ? `<span class="bildirim-noktasi ${bildirim}"></span>` : "";
 }
@@ -352,6 +346,9 @@ document.getElementById("revizyonSilButonu").addEventListener("click", () => {
   );
 });
 
+const yeniMaddeMedyaSecici = medyaSeciciOlustur();
+document.getElementById("yeniMaddeMedyaAlani").appendChild(yeniMaddeMedyaSecici.element);
+
 document.getElementById("yeniMaddeAcButonu").addEventListener("click", () => {
   document.getElementById("yeniMaddeFormu").classList.toggle("gizli");
 });
@@ -361,8 +358,10 @@ document.getElementById("yeniMaddeIptalButonu").addEventListener("click", () => 
 document.getElementById("yeniMaddeKaydetButonu").addEventListener("click", async () => {
   const baslik = document.getElementById("yeniMaddeBaslik").value.trim();
   const metin = document.getElementById("yeniMaddeMetin").value.trim();
-  const medyaUrl = document.getElementById("yeniMaddeMedyaUrl").value.trim();
-  const medyaTipi = document.getElementById("yeniMaddeMedyaTipi").value;
+  const medyaTipi = yeniMaddeMedyaSecici.getSeciliTipi();
+  const medyaDosya = yeniMaddeMedyaSecici.getDosya();
+  const medyaUrl = yeniMaddeMedyaSecici.getUrl();
+
   if (!baslik) return hataGoster("Madde başlığı gerekli.");
 
   const maddeId = await rpc("madde_ekle", {
@@ -373,23 +372,39 @@ document.getElementById("yeniMaddeKaydetButonu").addEventListener("click", async
     p_sira: 0,
   });
 
-  if (medyaUrl && medyaTipi) {
-    await rpc("madde_medya_ekle", {
-      p_token: kullanici.oturum_token,
-      p_madde_id: maddeId,
-      p_medya_url: medyaUrl,
-      p_medya_tipi: medyaTipi,
-      p_sira: 0,
-    });
-  }
+  await medyaKaydetVeEkle(maddeId, medyaTipi, medyaDosya, medyaUrl);
 
   document.getElementById("yeniMaddeBaslik").value = "";
   document.getElementById("yeniMaddeMetin").value = "";
-  document.getElementById("yeniMaddeMedyaUrl").value = "";
-  document.getElementById("yeniMaddeMedyaTipi").value = "";
+  yeniMaddeMedyaSecici.sifirla();
   document.getElementById("yeniMaddeFormu").classList.add("gizli");
   maddeleriYukle();
 });
+
+async function medyaKaydetVeEkle(maddeId, medyaTipi, dosya, url) {
+  if (!medyaTipi) return;
+
+  let medyaUrl = url;
+  if (medyaTipi !== "url") {
+    if (!dosya) return;
+    try {
+      medyaUrl = await medyaYukleVeUrlAl(dosya);
+    } catch (e) {
+      hataGoster("Dosya yüklenemedi: " + e.message);
+      return;
+    }
+  } else if (!url) {
+    return;
+  }
+
+  await rpc("madde_medya_ekle", {
+    p_token: kullanici.oturum_token,
+    p_madde_id: maddeId,
+    p_medya_url: medyaUrl,
+    p_medya_tipi: medyaTipi,
+    p_sira: 0,
+  });
+}
 
 async function maddeleriYukle() {
   const maddeler = await rpc("admin_maddeleri_getir", {
@@ -439,11 +454,7 @@ function maddeDetayModaliAc(madde) {
 
   let medyaHtml = "";
   (madde.medya || []).forEach((m) => {
-    let onizleme;
-    if (m.tip === "gorsel") onizleme = `<img src="${kacir(m.url)}" class="madde-medya-gorsel" />`;
-    else if (m.tip === "video") onizleme = `<video src="${kacir(m.url)}" controls class="madde-medya-video"></video>`;
-    else onizleme = `<a href="${kacir(m.url)}" target="_blank" rel="noopener" class="madde-medya-link">Ek dosya</a>`;
-    medyaHtml += `<div class="medya-satiri" data-medya-id="${m.id}">${onizleme}<button class="atanan-cikar-buton medya-sil-butonu" title="Medyayı kaldır"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>`;
+    medyaHtml += `<div class="medya-satiri" data-medya-id="${m.id}">${medyaOnizlemeHtml(m)}<button class="atanan-cikar-buton medya-sil-butonu" title="Medyayı kaldır"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>`;
   });
 
   let durumHtml = '<p class="bos-mesaj">Henüz kimse işaretlemedi.</p>';
@@ -470,7 +481,12 @@ function maddeDetayModaliAc(madde) {
       <input type="text" id="duzenleMaddeBaslik" value="${kacir(madde.baslik || "")}" placeholder="Madde başlığı" />
       <textarea id="duzenleMaddeMetin" placeholder="Madde içeriği">${kacir(madde.metin || "")}</textarea>
     </div>
-    ${medyaHtml ? `<div class="modal-bolum">${medyaHtml}</div>` : ""}
+    <div class="modal-bolum">
+      <div class="modal-bolum-etiket">Medya</div>
+      <div id="maddeMedyaListesi">${medyaHtml}</div>
+      <div id="maddeMedyaEkleAlani"></div>
+      <button class="ikincil-buton" id="maddeMedyaEkleButonu" style="margin-top:8px;">${ikonlar.ekle} Medya Ekle</button>
+    </div>
     <div class="modal-bolum form-buton-satiri">
       <button class="birincil-buton" id="maddeKaydetButonu">Kaydet</button>
       <button class="tehlike-metin-buton" id="maddeSilButonu">Maddeyi Sil</button>
@@ -492,6 +508,27 @@ function maddeDetayModaliAc(madde) {
       satir.remove();
       maddeleriYukle();
     });
+  });
+
+  icerik.querySelector("#maddeMedyaEkleButonu").addEventListener("click", (e) => {
+    const buton = e.currentTarget;
+    const alan = icerik.querySelector("#maddeMedyaEkleAlani");
+    if (alan.childElementCount > 0) {
+      alan.innerHTML = "";
+      return;
+    }
+    const secici = medyaSeciciOlustur();
+    alan.appendChild(secici.element);
+    const kaydetButonu = document.createElement("button");
+    kaydetButonu.className = "birincil-buton";
+    kaydetButonu.style.marginTop = "8px";
+    kaydetButonu.textContent = "Kaydet";
+    kaydetButonu.addEventListener("click", async () => {
+      await medyaKaydetVeEkle(madde.id, secici.getSeciliTipi(), secici.getDosya(), secici.getUrl());
+      modalKapat();
+      maddeleriYukle();
+    });
+    alan.appendChild(kaydetButonu);
   });
 
   icerik.querySelector("#maddeKaydetButonu").addEventListener("click", async () => {

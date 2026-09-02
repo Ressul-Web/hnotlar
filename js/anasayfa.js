@@ -13,12 +13,6 @@ function hataGoster(mesaj) {
   setTimeout(() => genelHataMesaji.classList.add("gizli"), 4000);
 }
 
-function kacir(metin) {
-  const div = document.createElement("div");
-  div.textContent = metin == null ? "" : metin;
-  return div.innerHTML;
-}
-
 async function rpc(fonksiyonAdi, parametreler) {
   const { data, error } = await supabaseClient.rpc(fonksiyonAdi, parametreler);
   if (error) {
@@ -209,13 +203,7 @@ async function maddeleriYukle() {
 function maddeDetayModaliAc(madde) {
   let medyaHtml = "";
   (madde.medya || []).forEach((m) => {
-    if (m.tip === "gorsel") {
-      medyaHtml += `<img src="${kacir(m.url)}" class="madde-medya-gorsel" />`;
-    } else if (m.tip === "video") {
-      medyaHtml += `<video src="${kacir(m.url)}" controls class="madde-medya-video"></video>`;
-    } else {
-      medyaHtml += `<a href="${kacir(m.url)}" target="_blank" rel="noopener" class="madde-medya-link">Ek dosya</a>`;
-    }
+    medyaHtml += medyaOnizlemeHtml(m);
   });
 
   const durum = madde.benim_durumum || { yapildi: false, aciklama: null };

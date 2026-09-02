@@ -757,6 +757,30 @@
   font-weight: 600;
 }
 
+.madde-dosya-karti {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--renk-gri-200);
+  border-radius: var(--radius-kucuk);
+  background: var(--renk-gri-50);
+  color: var(--renk-koyu);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 10px;
+  transition: background var(--gecis), border-color var(--gecis);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.madde-dosya-karti:hover {
+  background: var(--renk-birincil-acik);
+  border-color: var(--renk-birincil);
+}
+
 .durum-listesi {
   display: flex;
   flex-wrap: wrap;
@@ -1076,6 +1100,133 @@ body.modal-kilit {
 .bildirim-noktasi.kirmizi {
   background: var(--renk-kirmizi);
   box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.18);
+}
+
+/* ============================================================
+   OZEL DROPDOWN (medya tipi secici)
+   ============================================================ */
+.ozel-secim {
+  position: relative;
+}
+
+.ozel-secim-buton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--renk-gri-200);
+  border-radius: var(--radius-kucuk);
+  background: var(--renk-beyaz);
+  color: var(--renk-koyu);
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--gecis), box-shadow var(--gecis);
+}
+
+.ozel-secim-buton:hover {
+  border-color: var(--renk-gri-400);
+}
+
+.ozel-secim-buton svg {
+  flex-shrink: 0;
+  color: var(--renk-gri-400);
+  transition: transform var(--gecis);
+}
+
+.ozel-secim-etiket {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ozel-secim-liste {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--renk-beyaz);
+  border: 1px solid var(--renk-gri-200);
+  border-radius: var(--radius-orta);
+  box-shadow: var(--golge-orta);
+  padding: 6px;
+  z-index: 50;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.ozel-secim-liste.acik {
+  display: block;
+}
+
+.ozel-secim-liste:not(.acik) {
+  display: none;
+}
+
+.ozel-secim-secenek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-kucuk);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--renk-koyu);
+  cursor: pointer;
+  transition: background var(--gecis);
+}
+
+.ozel-secim-secenek:hover {
+  background: var(--renk-gri-100);
+}
+
+/* ============================================================
+   MEDYA SECICI (dosya yukleme / URL)
+   ============================================================ */
+.medya-secici-sarmalayici {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.medya-dosya-girisi {
+  font-size: 13px;
+  color: var(--renk-gri-600);
+  padding: 10px 12px;
+  border: 1.5px dashed var(--renk-gri-200);
+  border-radius: var(--radius-kucuk);
+  background: var(--renk-gri-50);
+  cursor: pointer;
+}
+
+.medya-dosya-girisi::file-selector-button {
+  padding: 7px 14px;
+  margin-right: 12px;
+  border: none;
+  border-radius: var(--radius-hap);
+  background: var(--renk-koyu);
+  color: var(--renk-beyaz);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.medya-dosya-adi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--renk-gri-700);
+  background: var(--renk-gri-50);
+  border: 1px solid var(--renk-gri-200);
+  border-radius: var(--radius-kucuk);
+  padding: 10px 12px;
 }
 
 .genel-hata {
