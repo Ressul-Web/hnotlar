@@ -46,15 +46,21 @@
 
       <div id="projeDetayGorunumu" class="gizli">
         <button id="projeyeGeriDonButonu" class="geri-buton"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Projelere dön</button>
-        <h2 id="projeDetayBaslik"></h2>
+        <div class="detay-baslik-satiri">
+          <h2 id="projeDetayBaslik"></h2>
+          <div class="detay-baslik-aksiyonlar">
+            <button id="projeDuzenleButonu" class="duzenle-buton" title="Projeyi düzenle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+            <button id="projeSilButonu" class="tehlike-metin-buton">Sil</button>
+          </div>
+        </div>
         <p id="projeDetayAciklama" class="aciklama-metni"></p>
 
         <div class="detay-bolum">
           <div class="panel-baslik-satiri">
             <h3>Atanan Kullanıcılar</h3>
           </div>
-          <div id="atananKullanicilar" class="etiket-listesi"></div>
-          <div class="form-buton-satiri">
+          <div id="atananKullanicilar" class="atanan-liste"></div>
+          <div class="atama-satiri">
             <select id="kullaniciAtaSecim" class="secim-kutusu"></select>
             <button id="kullaniciAtaButonu" class="ikincil-buton">Ata</button>
           </div>
@@ -79,7 +85,20 @@
 
       <div id="revizyonDetayGorunumu" class="gizli">
         <button id="revizyonaGeriDonButonu" class="geri-buton"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Revizyonlara dön</button>
-        <h2 id="revizyonDetayBaslik"></h2>
+        <div class="detay-baslik-satiri">
+          <h2 id="revizyonDetayBaslik"></h2>
+          <div class="detay-baslik-aksiyonlar">
+            <label class="yayin-kontrolu">
+              Kullanıcılara göster
+              <span class="anahtar">
+                <input type="checkbox" id="revizyonYayinAnahtari" />
+                <span class="anahtar-kaydirici"></span>
+              </span>
+            </label>
+            <button id="revizyonDuzenleButonu" class="duzenle-buton" title="Revizyonu düzenle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+            <button id="revizyonSilButonu" class="tehlike-metin-buton">Sil</button>
+          </div>
+        </div>
         <p id="revizyonDetayAciklama" class="aciklama-metni"></p>
 
         <div class="panel-baslik-satiri">

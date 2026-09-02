@@ -28,6 +28,21 @@ function modalKapat() {
   document.body.classList.remove("modal-kilit");
 }
 
+function modalOnayAc(baslik, onayMetni, onayFn) {
+  const icerik = modalAc(`
+    <h2 class="modal-baslik">${baslik}</h2>
+    <div class="modal-bolum" style="display:flex; gap:10px; justify-content:flex-end;">
+      <button class="ikincil-buton" id="onayIptalButonu">Vazgeç</button>
+      <button class="birincil-buton tehlike-buton" id="onayEvetButonu">${onayMetni}</button>
+    </div>
+  `);
+  icerik.querySelector("#onayIptalButonu").addEventListener("click", modalKapat);
+  icerik.querySelector("#onayEvetButonu").addEventListener("click", async () => {
+    modalKapat();
+    await onayFn();
+  });
+}
+
 const ikonlar = {
   geri: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
   ekle: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',

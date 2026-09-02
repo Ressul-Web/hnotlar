@@ -19,6 +19,10 @@ function kacir(metin) {
   return div.innerHTML;
 }
 
+function bildirimNoktasiHtml(bildirim) {
+  return bildirim ? `<span class="bildirim-noktasi ${bildirim}"></span>` : "";
+}
+
 async function rpc(fonksiyonAdi, parametreler) {
   const { data, error } = await supabaseClient.rpc(fonksiyonAdi, parametreler);
   if (error) {
@@ -47,7 +51,9 @@ tabButonlari.forEach((buton) => {
 // PROJELER
 // ============================================================
 let aktifProjeId = null;
+let aktifProje = null;
 let aktifRevizyonId = null;
+let aktifRevizyon = null;
 
 const projeListesiGorunumu = document.getElementById("projeListesiGorunumu");
 const projeDetayGorunumu = document.getElementById("projeDetayGorunumu");
@@ -65,14 +71,19 @@ async function projeleriYukle() {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
     kart.innerHTML = `
-      <div class="kart-baslik-satiri">
+      <div class="kart-sol">
         <span class="kart-ikon">${ikonlar.klasor}</span>
-        <h3>${kacir(proje.ad)}</h3>
+        <div class="kart-sol-metin">
+          <h3>${kacir(proje.ad)}</h3>
+          <p>${kacir(proje.aciklama || "")}</p>
+        </div>
       </div>
-      <p>${kacir(proje.aciklama || "")}</p>
-      <div class="kart-alt-bilgi">
-        <span>${proje.kullanici_sayisi} kullanıcı</span>
-        <span>${proje.revizyon_sayisi} revizyon</span>
+      <div class="kart-sag">
+        <div class="kart-alt-bilgi">
+          <span>${proje.kullanici_sayisi} kullanıcı</span>
+          <span>${proje.revizyon_sayisi} revizyon</span>
+        </div>
+        ${bildirimNoktasiHtml(proje.bildirim)}
       </div>
     `;
     kart.addEventListener("click", () => projeDetayinaGit(proje));
@@ -99,6 +110,7 @@ document.getElementById("yeniProjeKaydetButonu").addEventListener("click", async
 
 async function projeDetayinaGit(proje) {
   aktifProjeId = proje.id;
+  aktifProje = proje;
   projeListesiGorunumu.classList.add("gizli");
   revizyonDetayGorunumu.classList.add("gizli");
   projeDetayGorunumu.classList.remove("gizli");
@@ -116,6 +128,43 @@ document.getElementById("projeyeGeriDonButonu").addEventListener("click", () => 
   projeleriYukle();
 });
 
+document.getElementById("projeDuzenleButonu").addEventListener("click", () => {
+  const icerik = modalAc(`
+    <h2 class="modal-baslik">Projeyi Düzenle</h2>
+    <div class="modal-bolum" style="display:flex; flex-direction:column; gap:10px;">
+      <input type="text" id="duzenleProjeAd" value="${kacir(aktifProje.ad)}" placeholder="Proje adı" />
+      <textarea id="duzenleProjeAciklama" placeholder="Açıklama (opsiyonel)">${kacir(aktifProje.aciklama || "")}</textarea>
+      <div class="form-buton-satiri">
+        <button class="birincil-buton" id="duzenleProjeKaydetButonu">Kaydet</button>
+        <button class="ikincil-buton" id="duzenleProjeIptalButonu">Vazgeç</button>
+      </div>
+    </div>
+  `);
+  icerik.querySelector("#duzenleProjeIptalButonu").addEventListener("click", modalKapat);
+  icerik.querySelector("#duzenleProjeKaydetButonu").addEventListener("click", async () => {
+    const ad = icerik.querySelector("#duzenleProjeAd").value.trim();
+    const aciklama = icerik.querySelector("#duzenleProjeAciklama").value.trim();
+    if (!ad) return hataGoster("Proje adı gerekli.");
+    await rpc("proje_guncelle", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId, p_ad: ad, p_aciklama: aciklama || null });
+    aktifProje.ad = ad;
+    aktifProje.aciklama = aciklama;
+    document.getElementById("projeDetayBaslik").textContent = ad;
+    document.getElementById("projeDetayAciklama").textContent = aciklama || "";
+    modalKapat();
+  });
+});
+
+document.getElementById("projeSilButonu").addEventListener("click", () => {
+  modalOnayAc(
+    `"${kacir(aktifProje.ad)}" projesini silmek istediğine emin misin? İçindeki tüm revizyonlar ve maddeler de silinecek.`,
+    "Projeyi Sil",
+    async () => {
+      await rpc("proje_sil", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
+      document.getElementById("projeyeGeriDonButonu").click();
+    }
+  );
+});
+
 async function atananKullanicilariYukle() {
   const kullanicilar = await rpc("admin_proje_kullanicilari_getir", {
     p_token: kullanici.oturum_token,
@@ -128,19 +177,36 @@ async function atananKullanicilariYukle() {
     return;
   }
   kullanicilar.forEach((k) => {
-    const etiket = document.createElement("span");
-    etiket.className = "etiket";
-    etiket.textContent = `${k.ad_soyad} (${k.rol})`;
-    kutu.appendChild(etiket);
+    const satir = document.createElement("div");
+    satir.className = "atanan-satir";
+    satir.innerHTML = `
+      <span class="atanan-satir-sol">${kacir(k.ad_soyad)} <span class="atanan-rol-etiket">${kacir(k.rol)}</span></span>
+      <button class="atanan-cikar-buton" title="Projeden çıkar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    `;
+    satir.querySelector(".atanan-cikar-buton").addEventListener("click", async () => {
+      await rpc("proje_kullanici_cikar", {
+        p_token: kullanici.oturum_token,
+        p_proje_id: aktifProjeId,
+        p_kullanici_id: k.kullanici_id,
+      });
+      atananKullanicilariYukle();
+      atamaIcinKullanicilariYukle();
+    });
+    kutu.appendChild(satir);
   });
 }
 
 async function atamaIcinKullanicilariYukle() {
   const tumKullanicilar = await rpc("admin_kullanicilari_getir", { p_token: kullanici.oturum_token });
+  const atananlar = await rpc("admin_proje_kullanicilari_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
+  const atananIdler = new Set((atananlar || []).map((a) => a.kullanici_id));
+
   const secim = document.getElementById("kullaniciAtaSecim");
   secim.innerHTML = "";
   tumKullanicilar
-    .filter((k) => k.rol === "personel" || k.rol === "firma" || k.rol === "patron")
+    .filter((k) => (k.rol === "personel" || k.rol === "firma" || k.rol === "patron") && !atananIdler.has(k.id))
     .forEach((k) => {
       const opt = document.createElement("option");
       opt.value = k.id;
@@ -158,6 +224,7 @@ document.getElementById("kullaniciAtaButonu").addEventListener("click", async ()
     p_kullanici_id: secim.value,
   });
   atananKullanicilariYukle();
+  atamaIcinKullanicilariYukle();
 });
 
 document.getElementById("yeniRevizyonAcButonu").addEventListener("click", () => {
@@ -197,24 +264,21 @@ async function revizyonlariYukle() {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
 
-    const tamamlayanlar = rev.tamamlayanlar || [];
-    const tamamlayanlarHtml = tamamlayanlar
-      .map(
-        (t) =>
-          `<span class="durum-etiket ${t.yapildi ? "yapildi" : "beklemede"}">${kacir(t.kullanici_adi)}: ${
-            t.yapildi ? "Tamamladı" : "Bekliyor"
-          }</span>`
-      )
-      .join("");
-
     kart.innerHTML = `
-      <div class="kart-baslik-satiri">
+      <div class="kart-sol">
         <span class="kart-ikon">${ikonlar.belge}</span>
-        <h3>${kacir(rev.baslik)}</h3>
+        <div class="kart-sol-metin">
+          <h3>${kacir(rev.baslik)}</h3>
+          <p>${kacir(rev.aciklama || "")}</p>
+        </div>
       </div>
-      <p>${kacir(rev.aciklama || "")}</p>
-      <div class="kart-alt-bilgi"><span>${rev.madde_sayisi} madde</span></div>
-      ${tamamlayanlarHtml ? `<div class="durum-listesi">${tamamlayanlarHtml}</div>` : ""}
+      <div class="kart-sag">
+        <div class="kart-alt-bilgi">
+          <span>${rev.madde_sayisi} madde</span>
+          <span>${rev.yayinda ? "Yayında" : "Taslak"}</span>
+        </div>
+        ${bildirimNoktasiHtml(rev.bildirim)}
+      </div>
     `;
     kart.addEventListener("click", () => revizyonDetayinaGit(rev));
     liste.appendChild(kart);
@@ -223,11 +287,13 @@ async function revizyonlariYukle() {
 
 async function revizyonDetayinaGit(rev) {
   aktifRevizyonId = rev.id;
+  aktifRevizyon = rev;
   projeDetayGorunumu.classList.add("gizli");
   revizyonDetayGorunumu.classList.remove("gizli");
 
   document.getElementById("revizyonDetayBaslik").textContent = rev.baslik;
   document.getElementById("revizyonDetayAciklama").textContent = rev.aciklama || "";
+  document.getElementById("revizyonYayinAnahtari").checked = rev.yayinda;
 
   await maddeleriYukle();
 }
@@ -237,6 +303,53 @@ document.getElementById("revizyonaGeriDonButonu").addEventListener("click", () =
   projeDetayGorunumu.classList.remove("gizli");
   aktifRevizyonId = null;
   revizyonlariYukle();
+});
+
+document.getElementById("revizyonYayinAnahtari").addEventListener("change", async (e) => {
+  await rpc("revizyon_yayinla", { p_token: kullanici.oturum_token, p_revizyon_id: aktifRevizyonId, p_yayinda: e.target.checked });
+  aktifRevizyon.yayinda = e.target.checked;
+});
+
+document.getElementById("revizyonDuzenleButonu").addEventListener("click", () => {
+  const icerik = modalAc(`
+    <h2 class="modal-baslik">Revizyonu Düzenle</h2>
+    <div class="modal-bolum" style="display:flex; flex-direction:column; gap:10px;">
+      <input type="text" id="duzenleRevizyonBaslik" value="${kacir(aktifRevizyon.baslik)}" placeholder="Revizyon başlığı" />
+      <textarea id="duzenleRevizyonAciklama" placeholder="Açıklama (opsiyonel)">${kacir(aktifRevizyon.aciklama || "")}</textarea>
+      <div class="form-buton-satiri">
+        <button class="birincil-buton" id="duzenleRevizyonKaydetButonu">Kaydet</button>
+        <button class="ikincil-buton" id="duzenleRevizyonIptalButonu">Vazgeç</button>
+      </div>
+    </div>
+  `);
+  icerik.querySelector("#duzenleRevizyonIptalButonu").addEventListener("click", modalKapat);
+  icerik.querySelector("#duzenleRevizyonKaydetButonu").addEventListener("click", async () => {
+    const baslik = icerik.querySelector("#duzenleRevizyonBaslik").value.trim();
+    const aciklama = icerik.querySelector("#duzenleRevizyonAciklama").value.trim();
+    if (!baslik) return hataGoster("Revizyon başlığı gerekli.");
+    await rpc("revizyon_guncelle", {
+      p_token: kullanici.oturum_token,
+      p_revizyon_id: aktifRevizyonId,
+      p_baslik: baslik,
+      p_aciklama: aciklama || null,
+    });
+    aktifRevizyon.baslik = baslik;
+    aktifRevizyon.aciklama = aciklama;
+    document.getElementById("revizyonDetayBaslik").textContent = baslik;
+    document.getElementById("revizyonDetayAciklama").textContent = aciklama || "";
+    modalKapat();
+  });
+});
+
+document.getElementById("revizyonSilButonu").addEventListener("click", () => {
+  modalOnayAc(
+    `"${kacir(aktifRevizyon.baslik)}" revizyonunu silmek istediğine emin misin? İçindeki tüm maddeler de silinecek.`,
+    "Revizyonu Sil",
+    async () => {
+      await rpc("revizyon_sil", { p_token: kullanici.oturum_token, p_revizyon_id: aktifRevizyonId });
+      document.getElementById("revizyonaGeriDonButonu").click();
+    }
+  );
 });
 
 document.getElementById("yeniMaddeAcButonu").addEventListener("click", () => {
@@ -308,6 +421,7 @@ async function maddeleriYukle() {
             : '<span class="durum-etiket beklemede">Henüz işaretlenmedi</span>'
         }
         ${madde.yorumlar && madde.yorumlar.length > 0 ? `<span class="durum-etiket">${ikonlar.sohbet} ${madde.yorumlar.length}</span>` : ""}
+        ${bildirimNoktasiHtml(madde.bildirim)}
       </span>
     `;
     kart.addEventListener("click", () => maddeDetayModaliAc(madde));
@@ -317,16 +431,17 @@ async function maddeleriYukle() {
   liste.appendChild(sarmalayici);
 }
 
-function maddeDetayModaliAc(madde) {
+async function maddeDetayModaliAc(madde) {
+  await rpc("madde_gorulme_isaretle", { p_token: kullanici.oturum_token, p_madde_id: madde.id });
+  maddeleriYukle();
+
   let medyaHtml = "";
   (madde.medya || []).forEach((m) => {
-    if (m.tip === "gorsel") {
-      medyaHtml += `<img src="${kacir(m.url)}" class="madde-medya-gorsel" />`;
-    } else if (m.tip === "video") {
-      medyaHtml += `<video src="${kacir(m.url)}" controls class="madde-medya-video"></video>`;
-    } else {
-      medyaHtml += `<a href="${kacir(m.url)}" target="_blank" rel="noopener" class="madde-medya-link">Ek dosya</a>`;
-    }
+    let onizleme;
+    if (m.tip === "gorsel") onizleme = `<img src="${kacir(m.url)}" class="madde-medya-gorsel" />`;
+    else if (m.tip === "video") onizleme = `<video src="${kacir(m.url)}" controls class="madde-medya-video"></video>`;
+    else onizleme = `<a href="${kacir(m.url)}" target="_blank" rel="noopener" class="madde-medya-link">Ek dosya</a>`;
+    medyaHtml += `<div class="medya-satiri" data-medya-id="${m.id}">${onizleme}<button class="atanan-cikar-buton medya-sil-butonu" title="Medyayı kaldır"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>`;
   });
 
   let durumHtml = '<p class="bos-mesaj">Henüz kimse işaretlemedi.</p>';
@@ -348,15 +463,16 @@ function maddeDetayModaliAc(madde) {
       .join("")}</div>`;
   }
 
-  modalAc(`
-    <h2 class="modal-baslik">${kacir(madde.baslik || madde.metin)}</h2>
-    ${
-      madde.metin
-        ? `<div class="modal-bolum"><p class="modal-metin">${kacir(madde.metin)}</p>${medyaHtml}</div>`
-        : medyaHtml
-        ? `<div class="modal-bolum">${medyaHtml}</div>`
-        : ""
-    }
+  const icerik = modalAc(`
+    <div class="modal-bolum" style="display:flex; flex-direction:column; gap:10px;">
+      <input type="text" id="duzenleMaddeBaslik" value="${kacir(madde.baslik || "")}" placeholder="Madde başlığı" />
+      <textarea id="duzenleMaddeMetin" placeholder="Madde içeriği">${kacir(madde.metin || "")}</textarea>
+    </div>
+    ${medyaHtml ? `<div class="modal-bolum">${medyaHtml}</div>` : ""}
+    <div class="modal-bolum form-buton-satiri">
+      <button class="birincil-buton" id="maddeKaydetButonu">Kaydet</button>
+      <button class="tehlike-metin-buton" id="maddeSilButonu">Maddeyi Sil</button>
+    </div>
     <div class="modal-bolum">
       <div class="modal-bolum-etiket">${ikonlar.tik} Kim tamamladı</div>
       ${durumHtml}
@@ -366,6 +482,31 @@ function maddeDetayModaliAc(madde) {
       ${yorumHtml}
     </div>
   `);
+
+  icerik.querySelectorAll(".medya-sil-butonu").forEach((buton) => {
+    buton.addEventListener("click", async () => {
+      const satir = buton.closest(".medya-satiri");
+      await rpc("madde_medya_sil", { p_token: kullanici.oturum_token, p_medya_id: satir.dataset.medyaId });
+      satir.remove();
+      maddeleriYukle();
+    });
+  });
+
+  icerik.querySelector("#maddeKaydetButonu").addEventListener("click", async () => {
+    const baslik = icerik.querySelector("#duzenleMaddeBaslik").value.trim();
+    const metin = icerik.querySelector("#duzenleMaddeMetin").value.trim();
+    if (!baslik) return hataGoster("Madde başlığı gerekli.");
+    await rpc("madde_guncelle", { p_token: kullanici.oturum_token, p_madde_id: madde.id, p_baslik: baslik, p_metin: metin });
+    modalKapat();
+    maddeleriYukle();
+  });
+
+  icerik.querySelector("#maddeSilButonu").addEventListener("click", () => {
+    modalOnayAc(`"${kacir(madde.baslik || "")}" maddesini silmek istediğine emin misin?`, "Maddeyi Sil", async () => {
+      await rpc("madde_sil", { p_token: kullanici.oturum_token, p_madde_id: madde.id });
+      maddeleriYukle();
+    });
+  });
 }
 
 // ============================================================

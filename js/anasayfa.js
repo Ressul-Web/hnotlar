@@ -50,12 +50,16 @@ async function projeleriYukle() {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
     kart.innerHTML = `
-      <div class="kart-baslik-satiri">
+      <div class="kart-sol">
         <span class="kart-ikon">${ikonlar.klasor}</span>
-        <h3>${kacir(proje.ad)}</h3>
+        <div class="kart-sol-metin">
+          <h3>${kacir(proje.ad)}</h3>
+          <p>${kacir(proje.aciklama || "")}</p>
+        </div>
       </div>
-      <p>${kacir(proje.aciklama || "")}</p>
-      <div class="kart-alt-bilgi"><span>${proje.revizyon_sayisi} revizyon</span></div>
+      <div class="kart-sag">
+        <div class="kart-alt-bilgi"><span>${proje.revizyon_sayisi} revizyon</span></div>
+      </div>
     `;
     kart.addEventListener("click", () => revizyonListesineGit(proje));
     liste.appendChild(kart);
@@ -99,18 +103,22 @@ async function revizyonlariYukle() {
     const kart = document.createElement("div");
     kart.className = "kart tiklanabilir";
     kart.innerHTML = `
-      <div class="kart-baslik-satiri">
+      <div class="kart-sol">
         <span class="kart-ikon">${ikonlar.belge}</span>
-        <h3>${kacir(rev.baslik)}</h3>
+        <div class="kart-sol-metin">
+          <h3>${kacir(rev.baslik)}</h3>
+          <p>${kacir(rev.aciklama || "")}</p>
+        </div>
       </div>
-      <p>${kacir(rev.aciklama || "")}</p>
-      <div class="kart-alt-bilgi">
-        <span>${rev.tamamlanan_madde_sayisi}/${rev.madde_sayisi} madde tamamlandı</span>
-        ${
-          rev.revizyon_tamamlandi
-            ? '<span class="durum-etiket yapildi">Revizyon Tamamlandı</span>'
-            : '<span class="durum-etiket beklemede">Devam Ediyor</span>'
-        }
+      <div class="kart-sag">
+        <div class="kart-alt-bilgi">
+          <span>${rev.tamamlanan_madde_sayisi}/${rev.madde_sayisi} madde tamamlandı</span>
+          ${
+            rev.revizyon_tamamlandi
+              ? '<span class="durum-etiket yapildi">Revizyon Tamamlandı</span>'
+              : '<span class="durum-etiket beklemede">Devam Ediyor</span>'
+          }
+        </div>
       </div>
     `;
     kart.addEventListener("click", () => maddeListesineGit(rev));

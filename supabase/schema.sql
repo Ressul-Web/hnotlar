@@ -70,9 +70,12 @@ create table if not exists revizyonlar (
   proje_id uuid not null references projeler(id) on delete cascade,
   baslik text not null,
   aciklama text,
+  yayinda boolean not null default false,
   olusturan_id uuid not null references kullanicilar(id),
   created_at timestamptz not null default now()
 );
+
+alter table revizyonlar add column if not exists yayinda boolean not null default false;
 
 -- ============================================================
 -- MADDELER (bir revizyon icinde sinirsiz sayida madde)
@@ -147,6 +150,19 @@ create index if not exists madde_yorumlari_madde_idx on madde_yorumlari(madde_id
 create index if not exists revizyon_durumlari_revizyon_idx on revizyon_durumlari(revizyon_id);
 
 -- ============================================================
+-- MADDE_GORULME (admin bir maddeyi en son ne zaman gordu)
+-- ============================================================
+create table if not exists madde_gorulme (
+  id uuid primary key default gen_random_uuid(),
+  madde_id uuid not null references maddeler(id) on delete cascade,
+  kullanici_id uuid not null references kullanicilar(id) on delete cascade,
+  son_gorulme timestamptz not null default now(),
+  unique (madde_id, kullanici_id)
+);
+
+create index if not exists madde_gorulme_madde_idx on madde_gorulme(madde_id);
+
+-- ============================================================
 -- RLS: tum tablolarda kapali erisim (varsayilan reddet)
 -- Erisim sadece asagidaki security definer fonksiyonlar uzerinden.
 -- ============================================================
@@ -161,6 +177,7 @@ alter table madde_medya enable row level security;
 alter table madde_durumlari enable row level security;
 alter table madde_yorumlari enable row level security;
 alter table revizyon_durumlari enable row level security;
+alter table madde_gorulme enable row level security;
 
 -- ============================================================
 -- OTURUM DOGRULAMA (ic kullanim - anon'a acilmiyor)
@@ -223,6 +240,61 @@ begin
   );
 end;
 $$;
+
+create or replace function madde_bildirim_durumu(p_madde_id uuid, p_kullanici_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_son_gorulme timestamptz;
+begin
+  select mg.son_gorulme into v_son_gorulme
+  from madde_gorulme mg
+  where mg.madde_id = p_madde_id and mg.kullanici_id = p_kullanici_id;
+
+  if v_son_gorulme is null then
+    v_son_gorulme := '-infinity'::timestamptz;
+  end if;
+
+  if exists (
+    select 1 from madde_yorumlari my
+    where my.madde_id = p_madde_id and my.created_at > v_son_gorulme
+  ) then
+    return 'kirmizi';
+  end if;
+
+  if exists (
+    select 1 from madde_durumlari md
+    where md.madde_id = p_madde_id and md.yapildi = true and md.yapildi_tarihi > v_son_gorulme
+  ) then
+    return 'yesil';
+  end if;
+
+  return null;
+end;
+$$;
+
+create or replace function madde_gorulme_isaretle(p_token text, p_madde_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_admin kullanicilar%rowtype;
+begin
+  v_admin := gecerli_admin(p_token);
+
+  insert into madde_gorulme (madde_id, kullanici_id, son_gorulme)
+  values (p_madde_id, v_admin.id, now())
+  on conflict (madde_id, kullanici_id) do update set son_gorulme = now();
+end;
+$$;
+
+revoke all on function madde_gorulme_isaretle(text, uuid) from public;
+grant execute on function madde_gorulme_isaretle(text, uuid) to anon, authenticated;
 
 -- ============================================================
 -- GIRIS / CIKIS
@@ -444,6 +516,38 @@ $$;
 revoke all on function proje_kullanici_cikar(text, uuid, uuid) from public;
 grant execute on function proje_kullanici_cikar(text, uuid, uuid) to anon, authenticated;
 
+create or replace function proje_guncelle(p_token text, p_proje_id uuid, p_ad text, p_aciklama text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform gecerli_admin(p_token);
+
+  update projeler set ad = p_ad, aciklama = p_aciklama where id = p_proje_id;
+end;
+$$;
+
+revoke all on function proje_guncelle(text, uuid, text, text) from public;
+grant execute on function proje_guncelle(text, uuid, text, text) to anon, authenticated;
+
+create or replace function proje_sil(p_token text, p_proje_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform gecerli_admin(p_token);
+
+  delete from projeler where id = p_proje_id;
+end;
+$$;
+
+revoke all on function proje_sil(text, uuid) from public;
+grant execute on function proje_sil(text, uuid) to anon, authenticated;
+
 create or replace function revizyon_olustur(p_token text, p_proje_id uuid, p_baslik text, p_aciklama text default null)
 returns uuid
 language plpgsql
@@ -466,6 +570,54 @@ $$;
 
 revoke all on function revizyon_olustur(text, uuid, text, text) from public;
 grant execute on function revizyon_olustur(text, uuid, text, text) to anon, authenticated;
+
+create or replace function revizyon_guncelle(p_token text, p_revizyon_id uuid, p_baslik text, p_aciklama text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform gecerli_admin(p_token);
+
+  update revizyonlar set baslik = p_baslik, aciklama = p_aciklama where id = p_revizyon_id;
+end;
+$$;
+
+revoke all on function revizyon_guncelle(text, uuid, text, text) from public;
+grant execute on function revizyon_guncelle(text, uuid, text, text) to anon, authenticated;
+
+create or replace function revizyon_yayinla(p_token text, p_revizyon_id uuid, p_yayinda boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform gecerli_admin(p_token);
+
+  update revizyonlar set yayinda = p_yayinda where id = p_revizyon_id;
+end;
+$$;
+
+revoke all on function revizyon_yayinla(text, uuid, boolean) from public;
+grant execute on function revizyon_yayinla(text, uuid, boolean) to anon, authenticated;
+
+create or replace function revizyon_sil(p_token text, p_revizyon_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform gecerli_admin(p_token);
+
+  delete from revizyonlar where id = p_revizyon_id;
+end;
+$$;
+
+revoke all on function revizyon_sil(text, uuid) from public;
+grant execute on function revizyon_sil(text, uuid) to anon, authenticated;
 
 drop function if exists madde_ekle(text, uuid, text, integer);
 
@@ -491,6 +643,38 @@ $$;
 revoke all on function madde_ekle(text, uuid, text, text, integer) from public;
 grant execute on function madde_ekle(text, uuid, text, text, integer) to anon, authenticated;
 
+create or replace function madde_guncelle(p_token text, p_madde_id uuid, p_baslik text, p_metin text)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform gecerli_admin(p_token);
+
+  update maddeler set baslik = p_baslik, metin = p_metin where id = p_madde_id;
+end;
+$$;
+
+revoke all on function madde_guncelle(text, uuid, text, text) from public;
+grant execute on function madde_guncelle(text, uuid, text, text) to anon, authenticated;
+
+create or replace function madde_sil(p_token text, p_madde_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform gecerli_admin(p_token);
+
+  delete from maddeler where id = p_madde_id;
+end;
+$$;
+
+revoke all on function madde_sil(text, uuid) from public;
+grant execute on function madde_sil(text, uuid) to anon, authenticated;
+
 create or replace function madde_medya_ekle(p_token text, p_madde_id uuid, p_medya_url text, p_medya_tipi text, p_sira integer default 0)
 returns uuid
 language plpgsql
@@ -513,11 +697,8 @@ $$;
 revoke all on function madde_medya_ekle(text, uuid, text, text, integer) from public;
 grant execute on function madde_medya_ekle(text, uuid, text, text, integer) to anon, authenticated;
 
--- ============================================================
--- ADMIN: OKUMA / LISTELEME
--- ============================================================
-create or replace function admin_projeleri_getir(p_token text)
-returns table (id uuid, ad text, aciklama text, created_at timestamptz, kullanici_sayisi bigint, revizyon_sayisi bigint)
+create or replace function madde_medya_sil(p_token text, p_medya_id uuid)
+returns void
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -525,11 +706,42 @@ as $$
 begin
   perform gecerli_admin(p_token);
 
+  delete from madde_medya where id = p_medya_id;
+end;
+$$;
+
+revoke all on function madde_medya_sil(text, uuid) from public;
+grant execute on function madde_medya_sil(text, uuid) to anon, authenticated;
+
+-- ============================================================
+-- ADMIN: OKUMA / LISTELEME
+-- ============================================================
+drop function if exists admin_projeleri_getir(text);
+
+create or replace function admin_projeleri_getir(p_token text)
+returns table (id uuid, ad text, aciklama text, created_at timestamptz, kullanici_sayisi bigint, revizyon_sayisi bigint, bildirim text)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_admin kullanicilar%rowtype;
+begin
+  v_admin := gecerli_admin(p_token);
+
   return query
   select
     p.id, p.ad, p.aciklama, p.created_at,
     (select count(*) from proje_kullanicilari pk where pk.proje_id = p.id),
-    (select count(*) from revizyonlar r where r.proje_id = p.id)
+    (select count(*) from revizyonlar r where r.proje_id = p.id),
+    (select case
+       when bool_or(madde_bildirim_durumu(m.id, v_admin.id) = 'kirmizi') then 'kirmizi'
+       when bool_or(madde_bildirim_durumu(m.id, v_admin.id) = 'yesil') then 'yesil'
+       else null
+     end
+     from maddeler m
+     join revizyonlar r on r.id = m.revizyon_id
+     where r.proje_id = p.id)
   from projeler p
   order by p.created_at desc;
 end;
@@ -562,19 +774,29 @@ grant execute on function admin_proje_kullanicilari_getir(text, uuid) to anon, a
 drop function if exists admin_revizyonlari_getir(text, uuid);
 
 create or replace function admin_revizyonlari_getir(p_token text, p_proje_id uuid)
-returns table (id uuid, baslik text, aciklama text, created_at timestamptz, madde_sayisi bigint, tamamlayanlar jsonb)
+returns table (id uuid, baslik text, aciklama text, created_at timestamptz, madde_sayisi bigint, tamamlayanlar jsonb, yayinda boolean, bildirim text)
 language plpgsql
 security definer
 set search_path = public, extensions
 as $$
+declare
+  v_admin kullanicilar%rowtype;
 begin
-  perform gecerli_admin(p_token);
+  v_admin := gecerli_admin(p_token);
 
   return query
   select r.id, r.baslik, r.aciklama, r.created_at,
     (select count(*) from maddeler m where m.revizyon_id = r.id),
     coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k.kullanici_adi, 'yapildi', rd.yapildi, 'tarih', rd.yapildi_tarihi))
-              from revizyon_durumlari rd join kullanicilar k on k.id = rd.kullanici_id where rd.revizyon_id = r.id), '[]'::jsonb)
+              from revizyon_durumlari rd join kullanicilar k on k.id = rd.kullanici_id where rd.revizyon_id = r.id), '[]'::jsonb),
+    r.yayinda,
+    (select case
+       when bool_or(madde_bildirim_durumu(m.id, v_admin.id) = 'kirmizi') then 'kirmizi'
+       when bool_or(madde_bildirim_durumu(m.id, v_admin.id) = 'yesil') then 'yesil'
+       else null
+     end
+     from maddeler m
+     where m.revizyon_id = r.id)
   from revizyonlar r
   where r.proje_id = p_proje_id
   order by r.created_at desc;
@@ -587,13 +809,15 @@ grant execute on function admin_revizyonlari_getir(text, uuid) to anon, authenti
 drop function if exists admin_maddeleri_getir(text, uuid);
 
 create or replace function admin_maddeleri_getir(p_token text, p_revizyon_id uuid)
-returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, durumlar jsonb, yorumlar jsonb)
+returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, durumlar jsonb, yorumlar jsonb, bildirim text)
 language plpgsql
 security definer
 set search_path = public, extensions
 as $$
+declare
+  v_admin kullanicilar%rowtype;
 begin
-  perform gecerli_admin(p_token);
+  v_admin := gecerli_admin(p_token);
 
   return query
   select
@@ -606,7 +830,8 @@ begin
     coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k.kullanici_adi, 'yapildi', md.yapildi, 'aciklama', md.yapildi_aciklama, 'tarih', md.yapildi_tarihi))
               from madde_durumlari md join kullanicilar k on k.id = md.kullanici_id where md.madde_id = m.id), '[]'::jsonb),
     coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k2.kullanici_adi, 'yorum', my.yorum, 'tarih', my.created_at) order by my.created_at)
-              from madde_yorumlari my join kullanicilar k2 on k2.id = my.kullanici_id where my.madde_id = m.id), '[]'::jsonb)
+              from madde_yorumlari my join kullanicilar k2 on k2.id = my.kullanici_id where my.madde_id = m.id), '[]'::jsonb),
+    madde_bildirim_durumu(m.id, v_admin.id)
   from maddeler m
   where m.revizyon_id = p_revizyon_id
   order by m.sira;
@@ -676,7 +901,7 @@ begin
     coalesce((select rd.yapildi from revizyon_durumlari rd
                 where rd.revizyon_id = r.id and rd.kullanici_id = v_kullanici.id), false)
   from revizyonlar r
-  where r.proje_id = p_proje_id
+  where r.proje_id = p_proje_id and r.yayinda = true
   order by r.created_at desc;
 end;
 $$;
