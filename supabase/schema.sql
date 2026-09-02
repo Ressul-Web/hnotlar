@@ -189,6 +189,19 @@ create table if not exists madde_gorulme (
 create index if not exists madde_gorulme_madde_idx on madde_gorulme(madde_id);
 
 -- ============================================================
+-- PROJE_MESAJLARI (proje bazli sohbet - admin ve atanan kullanicilar)
+-- ============================================================
+create table if not exists proje_mesajlari (
+  id uuid primary key default gen_random_uuid(),
+  proje_id uuid not null references projeler(id) on delete cascade,
+  kullanici_id uuid not null references kullanicilar(id),
+  mesaj text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists proje_mesajlari_proje_idx on proje_mesajlari(proje_id, created_at);
+
+-- ============================================================
 -- RLS: tum tablolarda kapali erisim (varsayilan reddet)
 -- Erisim sadece asagidaki security definer fonksiyonlar uzerinden.
 -- ============================================================
@@ -204,6 +217,7 @@ alter table madde_durumlari enable row level security;
 alter table madde_yorumlari enable row level security;
 alter table revizyon_durumlari enable row level security;
 alter table madde_gorulme enable row level security;
+alter table proje_mesajlari enable row level security;
 
 -- ============================================================
 -- OTURUM DOGRULAMA (ic kullanim - anon'a acilmiyor)
@@ -1062,5 +1076,58 @@ $$;
 
 revoke all on function revizyon_isaretle(text, uuid, boolean) from public;
 grant execute on function revizyon_isaretle(text, uuid, boolean) to anon, authenticated;
+
+-- ============================================================
+-- PROJE SOHBETI (admin + o projeye atanan kullanicilar)
+-- ============================================================
+create or replace function proje_mesaj_gonder(p_token text, p_proje_id uuid, p_mesaj text)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  if not proje_erisim_var_mi(v_kullanici.id, p_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  insert into proje_mesajlari (proje_id, kullanici_id, mesaj)
+  values (p_proje_id, v_kullanici.id, p_mesaj);
+end;
+$$;
+
+revoke all on function proje_mesaj_gonder(text, uuid, text) from public;
+grant execute on function proje_mesaj_gonder(text, uuid, text) to anon, authenticated;
+
+create or replace function proje_mesajlarini_getir(p_token text, p_proje_id uuid)
+returns table (id uuid, kullanici_id uuid, kullanici_adi text, ad_soyad text, rol text, mesaj text, created_at timestamptz)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  if not proje_erisim_var_mi(v_kullanici.id, p_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
+
+  return query
+  select pm.id, pm.kullanici_id, k.kullanici_adi, k.ad_soyad, k.rol, pm.mesaj, pm.created_at
+  from proje_mesajlari pm
+  join kullanicilar k on k.id = pm.kullanici_id
+  where pm.proje_id = p_proje_id
+  order by pm.created_at asc;
+end;
+$$;
+
+revoke all on function proje_mesajlarini_getir(text, uuid) from public;
+grant execute on function proje_mesajlarini_getir(text, uuid) to anon, authenticated;
 
 NOTIFY pgrst, 'reload schema';

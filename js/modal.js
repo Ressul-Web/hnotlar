@@ -99,10 +99,21 @@ function resimGoster(url) {
     overlay.addEventListener("click", (e2) => {
       if (e2.target === overlay || e2.target.classList.contains("lightbox-kapat")) {
         overlay.classList.remove("acik");
+        overlay.classList.remove("buyutulmus");
+        overlay.querySelector(".lightbox-resim").classList.remove("buyutuldu");
       }
     });
     document.addEventListener("keydown", (e2) => {
-      if (e2.key === "Escape") overlay.classList.remove("acik");
+      if (e2.key === "Escape") {
+        overlay.classList.remove("acik");
+        overlay.classList.remove("buyutulmus");
+        overlay.querySelector(".lightbox-resim").classList.remove("buyutuldu");
+      }
+    });
+    overlay.querySelector(".lightbox-resim").addEventListener("dblclick", (e2) => {
+      e2.stopPropagation();
+      overlay.classList.toggle("buyutulmus");
+      e2.target.classList.toggle("buyutuldu");
     });
   }
   overlay.querySelector(".lightbox-resim").src = url;

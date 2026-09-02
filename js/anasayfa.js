@@ -69,14 +69,75 @@ async function revizyonListesineGit(proje) {
   document.getElementById("revizyonListesiBaslik").textContent = proje.ad;
   document.getElementById("revizyonListesiAciklama").textContent = proje.aciklama || "";
 
-  await revizyonlariYukle();
+  await Promise.all([revizyonlariYukle(), projeSohbetiniYukle()]);
+  sohbetPollingBaslat();
 }
 
 document.getElementById("projeyeGeriDonButonu").addEventListener("click", () => {
   revizyonListesiGorunumu.classList.add("gizli");
   projeListesiGorunumu.classList.remove("gizli");
   aktifProjeId = null;
+  sohbetPollingDurdur();
   projeleriYukle();
+});
+
+// ============================================================
+// PROJE SOHBETI
+// ============================================================
+let sohbetPollingId = null;
+
+function sohbetPollingBaslat() {
+  sohbetPollingDurdur();
+  sohbetPollingId = setInterval(projeSohbetiniYukle, 5000);
+}
+
+function sohbetPollingDurdur() {
+  if (sohbetPollingId) {
+    clearInterval(sohbetPollingId);
+    sohbetPollingId = null;
+  }
+}
+
+async function projeSohbetiniYukle() {
+  const mesajlar = await rpc("proje_mesajlarini_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
+  const kutu = document.getElementById("projeSohbetMesajlari");
+  const enAlttaMi = kutu.scrollTop + kutu.clientHeight >= kutu.scrollHeight - 20;
+
+  kutu.innerHTML = "";
+  if (!mesajlar || mesajlar.length === 0) {
+    kutu.innerHTML = '<p class="bos-mesaj">Henüz mesaj yok.</p>';
+    return;
+  }
+  mesajlar.forEach((m) => {
+    const benMi = m.kullanici_id === kullanici.id;
+    const baloncuk = document.createElement("div");
+    baloncuk.className = `sohbet-baloncuk ${benMi ? "ben" : "diger"}`;
+    baloncuk.innerHTML = `
+      <span class="sohbet-gonderen">${benMi ? "Sen" : kacir(m.ad_soyad)}</span>
+      <span class="sohbet-metin">${kacir(m.mesaj)}</span>
+    `;
+    kutu.appendChild(baloncuk);
+  });
+
+  if (enAlttaMi) kutu.scrollTop = kutu.scrollHeight;
+}
+
+document.getElementById("projeSohbetGonderButonu").addEventListener("click", async () => {
+  const girisi = document.getElementById("projeSohbetGirisi");
+  const mesaj = girisi.value.trim();
+  if (!mesaj) return;
+  girisi.value = "";
+  await rpc("proje_mesaj_gonder", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId, p_mesaj: mesaj });
+  await projeSohbetiniYukle();
+  const kutu = document.getElementById("projeSohbetMesajlari");
+  kutu.scrollTop = kutu.scrollHeight;
+});
+
+document.getElementById("projeSohbetGirisi").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("projeSohbetGonderButonu").click();
+  }
 });
 
 // ============================================================

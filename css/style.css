@@ -1259,11 +1259,25 @@ body.modal-kilit {
   display: flex;
 }
 
+.lightbox-overlay.buyutulmus {
+  overflow: auto;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
 .lightbox-resim {
   max-width: 100%;
   max-height: 100%;
   border-radius: var(--radius-orta);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  cursor: zoom-in;
+}
+
+.lightbox-resim.buyutuldu {
+  max-width: none;
+  max-height: none;
+  width: auto;
+  cursor: zoom-out;
 }
 
 .lightbox-kapat {
@@ -1284,6 +1298,140 @@ body.modal-kilit {
 
 .lightbox-kapat:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================
+   PROJE SOHBETI
+   ============================================================ */
+.proje-detay-govde {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.proje-detay-ana {
+  flex: 1;
+  min-width: 0;
+}
+
+.proje-sohbet {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--renk-beyaz);
+  border: 1px solid var(--renk-gri-200);
+  border-radius: var(--radius-orta);
+  box-shadow: var(--golge-yumusak);
+  height: 520px;
+  position: sticky;
+  top: 90px;
+  overflow: hidden;
+}
+
+.proje-sohbet-baslik {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--renk-gri-700);
+  border-bottom: 1px solid var(--renk-gri-200);
+  flex-shrink: 0;
+}
+
+.proje-sohbet-mesajlari {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sohbet-baloncuk {
+  max-width: 88%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sohbet-baloncuk.ben {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.sohbet-baloncuk.diger {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.sohbet-gonderen {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--renk-gri-400);
+  padding: 0 4px;
+}
+
+.sohbet-metin {
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 9px 13px;
+  border-radius: 16px;
+  word-break: break-word;
+}
+
+.sohbet-baloncuk.ben .sohbet-metin {
+  background: var(--renk-birincil);
+  color: var(--renk-beyaz);
+  border-bottom-right-radius: 4px;
+}
+
+.sohbet-baloncuk.diger .sohbet-metin {
+  background: var(--renk-gri-100);
+  color: var(--renk-koyu);
+  border-bottom-left-radius: 4px;
+}
+
+.proje-sohbet-giris-satiri {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--renk-gri-200);
+  flex-shrink: 0;
+}
+
+.proje-sohbet-giris-satiri input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1.5px solid var(--renk-gri-200);
+  border-radius: var(--radius-hap);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--gecis), box-shadow var(--gecis);
+}
+
+.proje-sohbet-giris-satiri input:focus {
+  border-color: var(--renk-birincil);
+  box-shadow: 0 0 0 3px var(--renk-birincil-acik);
+}
+
+.proje-sohbet-giris-satiri .birincil-buton {
+  padding: 10px 18px;
+}
+
+@media (max-width: 900px) {
+  .proje-detay-govde {
+    flex-direction: column;
+  }
+
+  .proje-sohbet {
+    width: 100%;
+    position: static;
+    height: 400px;
+  }
 }
 
 .genel-hata {
