@@ -26,11 +26,15 @@
           <input type="password" id="sifre" name="sifre" placeholder="Şifrenizi girin" autocomplete="current-password" />
         </div>
 
+        <p id="hataMesaji" class="giris-hata"></p>
+
         <button type="submit" class="giris-buton">Giriş Yap</button>
       </form>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabaseClient.js"></script>
   <script src="js/giris.js"></script>
 </body>
 </html>

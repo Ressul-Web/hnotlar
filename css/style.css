@@ -87,6 +87,13 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+.giris-hata {
+  color: #dc2626;
+  font-size: 13px;
+  min-height: 16px;
+  text-align: center;
+}
+
 .giris-buton {
   margin-top: 8px;
   padding: 13px;
