@@ -22,9 +22,12 @@ create table if not exists kullanicilar (
   ad_soyad text not null,
   rol text not null check (rol in ('admin', 'patron', 'personel', 'firma')),
   firma_id uuid references firmalar(id) on delete set null,
+  aciklama text,
   aktif boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table kullanicilar add column if not exists aciklama text;
 
 -- ============================================================
 -- OTURUMLAR (giris sonrasi verilen oturum token'i)
@@ -247,13 +250,16 @@ grant execute on function cikis_yap(text) to anon, authenticated;
 -- ============================================================
 -- ADMIN: KULLANICI VE FIRMA YONETIMI
 -- ============================================================
+drop function if exists kullanici_ekle(text, text, text, text, text, uuid);
+
 create or replace function kullanici_ekle(
   p_token text,
   p_kullanici_adi text,
   p_sifre text,
   p_ad_soyad text,
   p_rol text,
-  p_firma_id uuid default null
+  p_firma_adi text default null,
+  p_aciklama text default null
 )
 returns uuid
 language plpgsql
@@ -262,19 +268,27 @@ set search_path = public, extensions
 as $$
 declare
   v_id uuid;
+  v_firma_id uuid;
 begin
   perform gecerli_admin(p_token);
 
-  insert into kullanicilar (kullanici_adi, sifre_hash, ad_soyad, rol, firma_id)
-  values (p_kullanici_adi, crypt(p_sifre, gen_salt('bf')), p_ad_soyad, p_rol, p_firma_id)
+  if p_firma_adi is not null and length(trim(p_firma_adi)) > 0 then
+    select f.id into v_firma_id from firmalar f where f.ad = trim(p_firma_adi);
+    if not found then
+      insert into firmalar (ad) values (trim(p_firma_adi)) returning id into v_firma_id;
+    end if;
+  end if;
+
+  insert into kullanicilar (kullanici_adi, sifre_hash, ad_soyad, rol, firma_id, aciklama)
+  values (p_kullanici_adi, crypt(p_sifre, gen_salt('bf')), p_ad_soyad, p_rol, v_firma_id, p_aciklama)
   returning id into v_id;
 
   return v_id;
 end;
 $$;
 
-revoke all on function kullanici_ekle(text, text, text, text, text, uuid) from public;
-grant execute on function kullanici_ekle(text, text, text, text, text, uuid) to anon, authenticated;
+revoke all on function kullanici_ekle(text, text, text, text, text, text, text) from public;
+grant execute on function kullanici_ekle(text, text, text, text, text, text, text) to anon, authenticated;
 
 create or replace function firma_ekle(p_token text, p_ad text)
 returns uuid
@@ -296,8 +310,10 @@ $$;
 revoke all on function firma_ekle(text, text) from public;
 grant execute on function firma_ekle(text, text) to anon, authenticated;
 
+drop function if exists admin_kullanicilari_getir(text);
+
 create or replace function admin_kullanicilari_getir(p_token text)
-returns table (id uuid, kullanici_adi text, ad_soyad text, rol text, firma_id uuid, firma_adi text, aktif boolean)
+returns table (id uuid, kullanici_adi text, ad_soyad text, rol text, firma_id uuid, firma_adi text, aciklama text, aktif boolean)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -306,7 +322,7 @@ begin
   perform gecerli_admin(p_token);
 
   return query
-  select k.id, k.kullanici_adi, k.ad_soyad, k.rol, k.firma_id, f.ad, k.aktif
+  select k.id, k.kullanici_adi, k.ad_soyad, k.rol, k.firma_id, f.ad, k.aciklama, k.aktif
   from kullanicilar k
   left join firmalar f on f.id = k.firma_id
   order by k.created_at desc;

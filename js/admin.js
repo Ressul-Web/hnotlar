@@ -324,29 +324,35 @@ async function kullanicilariYukle() {
     kutu.innerHTML = '<p class="bos-mesaj">Henüz kullanıcı yok.</p>';
     return;
   }
-  let html = "<table><thead><tr><th>Kullanıcı Adı</th><th>Ad Soyad</th><th>Rol</th><th>Firma</th></tr></thead><tbody>";
+  let html =
+    "<table><thead><tr><th>Kullanıcı Adı</th><th>Ad Soyad</th><th>Rol</th><th>Firma</th><th>Açıklama</th></tr></thead><tbody>";
   kullanicilar.forEach((k) => {
     html += `<tr><td>${kacir(k.kullanici_adi)}</td><td>${kacir(k.ad_soyad)}</td><td>${kacir(k.rol)}</td><td>${kacir(
       k.firma_adi || "-"
-    )}</td></tr>`;
+    )}</td><td>${kacir(k.aciklama || "-")}</td></tr>`;
   });
   html += "</tbody></table>";
   kutu.innerHTML = html;
 }
 
-document.getElementById("yeniKullaniciAcButonu").addEventListener("click", async () => {
+document.getElementById("yeniKullaniciAcButonu").addEventListener("click", () => {
   document.getElementById("yeniKullaniciFormu").classList.toggle("gizli");
-  await firmaSecimDoldur();
 });
 document.getElementById("yeniKullaniciIptalButonu").addEventListener("click", () => {
   document.getElementById("yeniKullaniciFormu").classList.add("gizli");
+});
+document.getElementById("yeniKullaniciRol").addEventListener("change", (e) => {
+  const firmaAdiAlani = document.getElementById("yeniKullaniciFirmaAdi");
+  firmaAdiAlani.classList.toggle("gizli", e.target.value !== "firma");
+  if (e.target.value !== "firma") firmaAdiAlani.value = "";
 });
 document.getElementById("yeniKullaniciKaydetButonu").addEventListener("click", async () => {
   const kullaniciAdi = document.getElementById("yeniKullaniciAdi").value.trim();
   const sifre = document.getElementById("yeniKullaniciSifre").value;
   const adSoyad = document.getElementById("yeniKullaniciAdSoyad").value.trim();
   const rol = document.getElementById("yeniKullaniciRol").value;
-  const firmaId = document.getElementById("yeniKullaniciFirma").value || null;
+  const firmaAdi = document.getElementById("yeniKullaniciFirmaAdi").value.trim();
+  const aciklama = document.getElementById("yeniKullaniciAciklama").value.trim();
 
   if (!kullaniciAdi || !sifre || !adSoyad) return hataGoster("Tüm alanları doldur.");
 
@@ -356,27 +362,18 @@ document.getElementById("yeniKullaniciKaydetButonu").addEventListener("click", a
     p_sifre: sifre,
     p_ad_soyad: adSoyad,
     p_rol: rol,
-    p_firma_id: firmaId,
+    p_firma_adi: rol === "firma" && firmaAdi ? firmaAdi : null,
+    p_aciklama: aciklama || null,
   });
 
   document.getElementById("yeniKullaniciAdi").value = "";
   document.getElementById("yeniKullaniciSifre").value = "";
   document.getElementById("yeniKullaniciAdSoyad").value = "";
+  document.getElementById("yeniKullaniciFirmaAdi").value = "";
+  document.getElementById("yeniKullaniciAciklama").value = "";
   document.getElementById("yeniKullaniciFormu").classList.add("gizli");
   kullanicilariYukle();
 });
-
-async function firmaSecimDoldur() {
-  const firmalar = await rpc("admin_firmalari_getir", { p_token: kullanici.oturum_token });
-  const secim = document.getElementById("yeniKullaniciFirma");
-  secim.innerHTML = '<option value="">Firma yok</option>';
-  firmalar.forEach((f) => {
-    const opt = document.createElement("option");
-    opt.value = f.id;
-    opt.textContent = f.ad;
-    secim.appendChild(opt);
-  });
-}
 
 // ============================================================
 // FIRMALAR
