@@ -135,16 +135,17 @@ document.getElementById("projeDuzenleButonu").addEventListener("click", () => {
     </div>
   `);
   icerik.querySelector("#duzenleProjeIptalButonu").addEventListener("click", modalKapat);
-  icerik.querySelector("#duzenleProjeKaydetButonu").addEventListener("click", async () => {
+  icerik.querySelector("#duzenleProjeKaydetButonu").addEventListener("click", () => {
     const ad = icerik.querySelector("#duzenleProjeAd").value.trim();
     const aciklama = icerik.querySelector("#duzenleProjeAciklama").value.trim();
     if (!ad) return hataGoster("Proje adı gerekli.");
-    await rpc("proje_guncelle", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId, p_ad: ad, p_aciklama: aciklama || null });
-    aktifProje.ad = ad;
-    aktifProje.aciklama = aciklama;
-    document.getElementById("projeDetayBaslik").textContent = ad;
-    document.getElementById("projeDetayAciklama").textContent = aciklama || "";
-    modalKapat();
+    modalOnayAc("Proje bilgilerini güncellemek istediğine emin misin?", "Kaydet", async () => {
+      await rpc("proje_guncelle", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId, p_ad: ad, p_aciklama: aciklama || null });
+      aktifProje.ad = ad;
+      aktifProje.aciklama = aciklama;
+      document.getElementById("projeDetayBaslik").textContent = ad;
+      document.getElementById("projeDetayAciklama").textContent = aciklama || "";
+    });
   });
 });
 
@@ -315,21 +316,22 @@ document.getElementById("revizyonDuzenleButonu").addEventListener("click", () =>
     </div>
   `);
   icerik.querySelector("#duzenleRevizyonIptalButonu").addEventListener("click", modalKapat);
-  icerik.querySelector("#duzenleRevizyonKaydetButonu").addEventListener("click", async () => {
+  icerik.querySelector("#duzenleRevizyonKaydetButonu").addEventListener("click", () => {
     const baslik = icerik.querySelector("#duzenleRevizyonBaslik").value.trim();
     const aciklama = icerik.querySelector("#duzenleRevizyonAciklama").value.trim();
     if (!baslik) return hataGoster("Revizyon başlığı gerekli.");
-    await rpc("revizyon_guncelle", {
-      p_token: kullanici.oturum_token,
-      p_revizyon_id: aktifRevizyonId,
-      p_baslik: baslik,
-      p_aciklama: aciklama || null,
+    modalOnayAc("Revizyon bilgilerini güncellemek istediğine emin misin?", "Kaydet", async () => {
+      await rpc("revizyon_guncelle", {
+        p_token: kullanici.oturum_token,
+        p_revizyon_id: aktifRevizyonId,
+        p_baslik: baslik,
+        p_aciklama: aciklama || null,
+      });
+      aktifRevizyon.baslik = baslik;
+      aktifRevizyon.aciklama = aciklama;
+      document.getElementById("revizyonDetayBaslik").textContent = baslik;
+      document.getElementById("revizyonDetayAciklama").textContent = aciklama || "";
     });
-    aktifRevizyon.baslik = baslik;
-    aktifRevizyon.aciklama = aciklama;
-    document.getElementById("revizyonDetayBaslik").textContent = baslik;
-    document.getElementById("revizyonDetayAciklama").textContent = aciklama || "";
-    modalKapat();
   });
 });
 
@@ -496,6 +498,10 @@ function maddeDetayModaliAc(madde) {
     <div class="modal-bolum">
       <div class="modal-bolum-etiket">${ikonlar.sohbet} Yorumlar / geri bildirim</div>
       ${yorumHtml}
+      <div class="yorum-ekle-satiri">
+        <input type="text" id="maddeYorumGirisi" placeholder="Yanıt yaz..." />
+        <button class="ikincil-buton" id="maddeYorumGonderButonu">Gönder</button>
+      </div>
     </div>
   `);
 
@@ -529,13 +535,14 @@ function maddeDetayModaliAc(madde) {
     alan.appendChild(kaydetButonu);
   });
 
-  icerik.querySelector("#maddeKaydetButonu").addEventListener("click", async () => {
+  icerik.querySelector("#maddeKaydetButonu").addEventListener("click", () => {
     const baslik = icerik.querySelector("#duzenleMaddeBaslik").value.trim();
     const metin = icerik.querySelector("#duzenleMaddeMetin").value.trim();
     if (!baslik) return hataGoster("Madde başlığı gerekli.");
-    await rpc("madde_guncelle", { p_token: kullanici.oturum_token, p_madde_id: madde.id, p_baslik: baslik, p_metin: metin });
-    modalKapat();
-    maddeleriYukle();
+    modalOnayAc("Madde bilgilerini güncellemek istediğine emin misin?", "Kaydet", async () => {
+      await rpc("madde_guncelle", { p_token: kullanici.oturum_token, p_madde_id: madde.id, p_baslik: baslik, p_metin: metin });
+      maddeleriYukle();
+    });
   });
 
   icerik.querySelector("#maddeSilButonu").addEventListener("click", () => {
@@ -543,6 +550,17 @@ function maddeDetayModaliAc(madde) {
       await rpc("madde_sil", { p_token: kullanici.oturum_token, p_madde_id: madde.id });
       maddeleriYukle();
     });
+  });
+
+  icerik.querySelector("#maddeYorumGonderButonu").addEventListener("click", async () => {
+    const girisi = icerik.querySelector("#maddeYorumGirisi");
+    const yorum = girisi.value.trim();
+    if (!yorum) return;
+    await rpc("madde_yorum_ekle", { p_token: kullanici.oturum_token, p_madde_id: madde.id, p_yorum: yorum });
+    const guncelMaddeler = await rpc("admin_maddeleri_getir", { p_token: kullanici.oturum_token, p_revizyon_id: aktifRevizyonId });
+    const guncelMadde = guncelMaddeler.find((m) => m.id === madde.id);
+    maddeleriYukle();
+    maddeDetayModaliAc(guncelMadde);
   });
 }
 

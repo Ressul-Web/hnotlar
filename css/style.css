@@ -22,6 +22,7 @@
   --radius-orta: 16px;
   --radius-kucuk: 12px;
   --radius-hap: 980px;
+  --renk-vurgu-zemin: rgba(0, 113, 227, 0.045);
   --golge-yumusak: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 6px rgba(0, 0, 0, 0.03);
   --golge-orta: 0 16px 40px rgba(0, 0, 0, 0.1);
   --gecis: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -487,7 +488,7 @@
 }
 
 .kart-listesi .kart:nth-child(even) {
-  background: var(--renk-gri-100);
+  background: var(--renk-vurgu-zemin);
 }
 
 .kart-sol {
@@ -728,14 +729,6 @@
   font-size: 14px;
   margin-bottom: 10px;
   line-height: 1.5;
-}
-
-.medya-onizleme-kapali {
-  margin-bottom: 10px;
-}
-
-.medya-onizleme-kapali .madde-dosya-karti {
-  margin-bottom: 8px;
 }
 
 .madde-medya-gorsel,
@@ -1076,7 +1069,7 @@ body.modal-kilit {
 }
 
 .madde-kart-listesi .madde-kart:nth-child(even) {
-  background: var(--renk-gri-100);
+  background: var(--renk-vurgu-zemin);
 }
 
 .madde-kart-baslik {
@@ -1246,6 +1239,51 @@ body.modal-kilit {
   border: 1px solid var(--renk-gri-200);
   border-radius: var(--radius-kucuk);
   padding: 10px 12px;
+}
+
+/* ============================================================
+   LIGHTBOX (gorsel buyutme)
+   ============================================================ */
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 40px;
+}
+
+.lightbox-overlay.acik {
+  display: flex;
+}
+
+.lightbox-resim {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-orta);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-kapat {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--renk-beyaz);
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--gecis);
+}
+
+.lightbox-kapat:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .genel-hata {

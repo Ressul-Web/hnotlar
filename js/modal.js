@@ -8,10 +8,7 @@ function medyaOnizlemeHtml(m) {
   const dosyaAdi = kacir((m.url || "").split("/").pop().split("?")[0]);
   const url = kacir(m.url);
   if (m.tip === "gorsel")
-    return `<div class="medya-onizleme-kapali">
-      <button type="button" class="madde-dosya-karti gorsel-goster-butonu">${ikonlar.gorsel} ${dosyaAdi || "Görsel"}</button>
-      <img src="${url}" class="madde-medya-gorsel gizli" />
-    </div>`;
+    return `<button type="button" class="madde-dosya-karti gorsel-goster-butonu" data-url="${url}">${ikonlar.gorsel} ${dosyaAdi || "Görsel"}</button>`;
   if (m.tip === "video") return `<video src="${url}" controls class="madde-medya-video"></video>`;
   if (m.tip === "word") return `<a href="${url}" target="_blank" rel="noopener" class="madde-dosya-karti">${ikonlar.word} ${dosyaAdi || "Word belgesi"}</a>`;
   if (m.tip === "excel") return `<a href="${url}" target="_blank" rel="noopener" class="madde-dosya-karti">${ikonlar.excel} ${dosyaAdi || "Excel belgesi"}</a>`;
@@ -87,10 +84,30 @@ document.addEventListener("click", () => {
 document.addEventListener("click", (e) => {
   const buton = e.target.closest(".gorsel-goster-butonu");
   if (!buton) return;
-  const kutu = buton.closest(".medya-onizleme-kapali");
-  kutu.querySelector("img").classList.remove("gizli");
-  buton.classList.add("gizli");
+  resimGoster(buton.dataset.url);
 });
+
+function resimGoster(url) {
+  let overlay = document.getElementById("resimLightbox");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "resimLightbox";
+    overlay.className = "lightbox-overlay";
+    overlay.innerHTML =
+      '<button type="button" class="lightbox-kapat" aria-label="Kapat">&times;</button><img class="lightbox-resim" />';
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e2) => {
+      if (e2.target === overlay || e2.target.classList.contains("lightbox-kapat")) {
+        overlay.classList.remove("acik");
+      }
+    });
+    document.addEventListener("keydown", (e2) => {
+      if (e2.key === "Escape") overlay.classList.remove("acik");
+    });
+  }
+  overlay.querySelector(".lightbox-resim").src = url;
+  overlay.classList.add("acik");
+}
 
 /**
  * Genel amacli ozel stilli dropdown. secenekler: [{deger, etiket, ikon}]
