@@ -116,11 +116,12 @@ async function projeSohbetiniYukle() {
   }
   mesajlar.forEach((m) => {
     const benMi = m.kullanici_id === kullanici.id;
+    const renk = benMi ? null : kullaniciRengiAl(m.kullanici_id);
     const baloncuk = document.createElement("div");
     baloncuk.className = `sohbet-baloncuk ${benMi ? "ben" : "diger"}`;
     baloncuk.innerHTML = `
-      <span class="sohbet-gonderen">${benMi ? "Sen" : kacir(m.ad_soyad)}</span>
-      <span class="sohbet-metin">${kacir(m.mesaj)}</span>
+      <span class="sohbet-gonderen" ${renk ? `style="color:${renk}"` : ""}>${benMi ? "Sen" : kacir(m.ad_soyad)}</span>
+      <span class="sohbet-metin" ${renk ? `style="border-left:3px solid ${renk}"` : ""}>${kacir(m.mesaj)}</span>
       <span class="sohbet-zaman">${tarihSaatFormatla(m.created_at)}</span>
     `;
     kutu.appendChild(baloncuk);

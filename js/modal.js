@@ -14,6 +14,16 @@ function bildirimNoktasiHtml(bildirim) {
   return bildirim ? `<span class="bildirim-noktasi ${bildirim}"></span>` : "";
 }
 
+const sohbetRenkPaleti = ["#5856D6", "#FF9500", "#FF2D55", "#00C7BE", "#AF52DE", "#A2845E", "#32ADE6", "#8E8E93"];
+
+function kullaniciRengiAl(kullaniciId) {
+  let toplam = 0;
+  for (let i = 0; i < kullaniciId.length; i++) {
+    toplam += kullaniciId.charCodeAt(i);
+  }
+  return sohbetRenkPaleti[toplam % sohbetRenkPaleti.length];
+}
+
 function sohbetBildirimHtml(varMi) {
   return varMi
     ? `<span class="sohbet-bildirim-rozeti" title="Yeni mesaj">${ikonlar.sohbet}<span class="bildirim-noktasi mavi"></span></span>`
