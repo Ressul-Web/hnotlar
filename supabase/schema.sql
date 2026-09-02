@@ -205,6 +205,19 @@ alter table proje_mesajlari add column if not exists sadece_admin boolean not nu
 create index if not exists proje_mesajlari_proje_idx on proje_mesajlari(proje_id, created_at);
 
 -- ============================================================
+-- PROJE_MESAJ_GORULME (kullanici bir projenin sohbetini en son ne zaman gordu)
+-- ============================================================
+create table if not exists proje_mesaj_gorulme (
+  id uuid primary key default gen_random_uuid(),
+  proje_id uuid not null references projeler(id) on delete cascade,
+  kullanici_id uuid not null references kullanicilar(id) on delete cascade,
+  son_gorulme timestamptz not null default now(),
+  unique (proje_id, kullanici_id)
+);
+
+create index if not exists proje_mesaj_gorulme_proje_idx on proje_mesaj_gorulme(proje_id);
+
+-- ============================================================
 -- RLS: tum tablolarda kapali erisim (varsayilan reddet)
 -- Erisim sadece asagidaki security definer fonksiyonlar uzerinden.
 -- ============================================================
@@ -221,6 +234,7 @@ alter table madde_yorumlari enable row level security;
 alter table revizyon_durumlari enable row level security;
 alter table madde_gorulme enable row level security;
 alter table proje_mesajlari enable row level security;
+alter table proje_mesaj_gorulme enable row level security;
 
 -- ============================================================
 -- OTURUM DOGRULAMA (ic kullanim - anon'a acilmiyor)
@@ -762,7 +776,7 @@ grant execute on function madde_medya_sil(text, uuid) to anon, authenticated;
 drop function if exists admin_projeleri_getir(text);
 
 create or replace function admin_projeleri_getir(p_token text)
-returns table (id uuid, ad text, aciklama text, created_at timestamptz, kullanici_sayisi bigint, revizyon_sayisi bigint, bildirim text)
+returns table (id uuid, ad text, aciklama text, created_at timestamptz, kullanici_sayisi bigint, revizyon_sayisi bigint, bildirim text, sohbet_bildirimi boolean)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -784,7 +798,8 @@ begin
      end
      from maddeler m
      join revizyonlar r on r.id = m.revizyon_id
-     where r.proje_id = p.id)
+     where r.proje_id = p.id),
+    proje_sohbet_bildirimi_var_mi(p.id, v_admin.id, v_admin.rol)
   from projeler p
   order by p.created_at desc;
 end;
@@ -888,8 +903,10 @@ grant execute on function admin_maddeleri_getir(text, uuid) to anon, authenticat
 -- ============================================================
 -- KULLANICI TARAFI (personel / firma / patron)
 -- ============================================================
+drop function if exists kullanici_projelerini_getir(text);
+
 create or replace function kullanici_projelerini_getir(p_token text)
-returns table (id uuid, ad text, aciklama text, created_at timestamptz, revizyon_sayisi bigint)
+returns table (id uuid, ad text, aciklama text, created_at timestamptz, revizyon_sayisi bigint, sohbet_bildirimi boolean)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -901,7 +918,8 @@ begin
 
   return query
   select p.id, p.ad, p.aciklama, p.created_at,
-    (select count(*) from revizyonlar r where r.proje_id = p.id)
+    (select count(*) from revizyonlar r where r.proje_id = p.id),
+    proje_sohbet_bildirimi_var_mi(p.id, v_kullanici.id, v_kullanici.rol)
   from projeler p
   join proje_kullanicilari pk on pk.proje_id = p.id
   where pk.kullanici_id = v_kullanici.id
@@ -1139,5 +1157,52 @@ $$;
 
 revoke all on function proje_mesajlarini_getir(text, uuid) from public;
 grant execute on function proje_mesajlarini_getir(text, uuid) to anon, authenticated;
+
+create or replace function proje_sohbet_bildirimi_var_mi(p_proje_id uuid, p_kullanici_id uuid, p_rol text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_son_gorulme timestamptz;
+begin
+  select son_gorulme into v_son_gorulme
+  from proje_mesaj_gorulme
+  where proje_id = p_proje_id and kullanici_id = p_kullanici_id;
+
+  if v_son_gorulme is null then
+    v_son_gorulme := '-infinity'::timestamptz;
+  end if;
+
+  return exists (
+    select 1 from proje_mesajlari pm
+    where pm.proje_id = p_proje_id
+      and pm.kullanici_id <> p_kullanici_id
+      and pm.created_at > v_son_gorulme
+      and (pm.sadece_admin = false or p_rol = 'admin')
+  );
+end;
+$$;
+
+create or replace function proje_mesaj_gorulme_isaretle(p_token text, p_proje_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_kullanici kullanicilar%rowtype;
+begin
+  v_kullanici := gecerli_kullanici(p_token);
+
+  insert into proje_mesaj_gorulme (proje_id, kullanici_id, son_gorulme)
+  values (p_proje_id, v_kullanici.id, now())
+  on conflict (proje_id, kullanici_id) do update set son_gorulme = now();
+end;
+$$;
+
+revoke all on function proje_mesaj_gorulme_isaretle(text, uuid) from public;
+grant execute on function proje_mesaj_gorulme_isaretle(text, uuid) to anon, authenticated;
 
 NOTIFY pgrst, 'reload schema';

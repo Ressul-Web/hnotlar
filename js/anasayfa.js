@@ -56,6 +56,7 @@ async function projeleriYukle() {
           <span>${proje.revizyon_sayisi} revizyon</span>
           <span>${tarihSaatFormatla(proje.created_at)}</span>
         </div>
+        ${sohbetBildirimHtml(proje.sohbet_bildirimi)}
       </div>
     `;
     kart.addEventListener("click", () => revizyonListesineGit(proje));
@@ -102,6 +103,7 @@ function sohbetPollingDurdur() {
 }
 
 async function projeSohbetiniYukle() {
+  rpc("proje_mesaj_gorulme_isaretle", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId }).catch(() => {});
   const mesajlar = await rpc("proje_mesajlarini_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
   const kutu = document.getElementById("projeSohbetMesajlari");
   const enAlttaMi = kutu.scrollTop + kutu.clientHeight >= kutu.scrollHeight - 20;

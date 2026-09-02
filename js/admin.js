@@ -78,6 +78,7 @@ async function projeleriYukle() {
           <span>${proje.revizyon_sayisi} revizyon</span>
           <span>${tarihSaatFormatla(proje.created_at)}</span>
         </div>
+        ${sohbetBildirimHtml(proje.sohbet_bildirimi)}
         ${bildirimNoktasiHtml(proje.bildirim)}
       </div>
     `;
@@ -130,12 +131,14 @@ document.getElementById("projeyeGeriDonButonu").addEventListener("click", () => 
 // ============================================================
 let sohbetPollingId = null;
 let sohbetModu = "herkese";
+let sonMesajlar = [];
 
-document.querySelectorAll(".sohbet-mod-buton").forEach((buton) => {
+document.querySelectorAll(".sohbet-sekme-buton").forEach((buton) => {
   buton.addEventListener("click", () => {
-    document.querySelectorAll(".sohbet-mod-buton").forEach((b) => b.classList.remove("aktif"));
+    document.querySelectorAll(".sohbet-sekme-buton").forEach((b) => b.classList.remove("aktif"));
     buton.classList.add("aktif");
     sohbetModu = buton.dataset.mod;
+    mesajlariCiz();
   });
 });
 
@@ -152,23 +155,28 @@ function sohbetPollingDurdur() {
 }
 
 async function projeSohbetiniYukle() {
-  const mesajlar = await rpc("proje_mesajlarini_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
+  rpc("proje_mesaj_gorulme_isaretle", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId }).catch(() => {});
+  sonMesajlar = await rpc("proje_mesajlarini_getir", { p_token: kullanici.oturum_token, p_proje_id: aktifProjeId });
+  mesajlariCiz();
+}
+
+function mesajlariCiz() {
   const kutu = document.getElementById("projeSohbetMesajlari");
   const enAlttaMi = kutu.scrollTop + kutu.clientHeight >= kutu.scrollHeight - 20;
 
+  const gosterilecekler = (sonMesajlar || []).filter((m) => (sohbetModu === "admin" ? m.sadece_admin : !m.sadece_admin));
+
   kutu.innerHTML = "";
-  if (!mesajlar || mesajlar.length === 0) {
+  if (gosterilecekler.length === 0) {
     kutu.innerHTML = '<p class="bos-mesaj">Henüz mesaj yok.</p>';
     return;
   }
-  mesajlar.forEach((m) => {
+  gosterilecekler.forEach((m) => {
     const benMi = m.kullanici_id === kullanici.id;
     const baloncuk = document.createElement("div");
-    baloncuk.className = `sohbet-baloncuk ${benMi ? "ben" : "diger"} ${m.sadece_admin ? "admin-ozel" : ""}`;
+    baloncuk.className = `sohbet-baloncuk ${benMi ? "ben" : "diger"}`;
     baloncuk.innerHTML = `
-      <span class="sohbet-gonderen">${benMi ? "Sen" : kacir(m.ad_soyad)}${
-      m.sadece_admin ? ' <span class="sohbet-kilit-etiketi">🔒 sadece adminler</span>' : ""
-    }</span>
+      <span class="sohbet-gonderen">${benMi ? "Sen" : kacir(m.ad_soyad)}</span>
       <span class="sohbet-metin">${kacir(m.mesaj)}</span>
       <span class="sohbet-zaman">${tarihSaatFormatla(m.created_at)}</span>
     `;

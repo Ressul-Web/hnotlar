@@ -10,6 +10,12 @@ function kacir(metin) {
   return div.innerHTML;
 }
 
+function sohbetBildirimHtml(varMi) {
+  return varMi
+    ? `<span class="sohbet-bildirim-rozeti" title="Yeni mesaj">${ikonlar.sohbet}<span class="bildirim-noktasi mavi"></span></span>`
+    : "";
+}
+
 function medyaOnizlemeHtml(m) {
   const dosyaAdi = kacir((m.url || "").split("/").pop().split("?")[0]);
   const url = kacir(m.url);
