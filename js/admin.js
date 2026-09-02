@@ -431,9 +431,11 @@ async function maddeleriYukle() {
   liste.appendChild(sarmalayici);
 }
 
-async function maddeDetayModaliAc(madde) {
-  await rpc("madde_gorulme_isaretle", { p_token: kullanici.oturum_token, p_madde_id: madde.id });
-  maddeleriYukle();
+function maddeDetayModaliAc(madde) {
+  supabaseClient
+    .rpc("madde_gorulme_isaretle", { p_token: kullanici.oturum_token, p_madde_id: madde.id })
+    .then(() => maddeleriYukle())
+    .catch(() => {});
 
   let medyaHtml = "";
   (madde.medya || []).forEach((m) => {
