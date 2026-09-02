@@ -333,6 +333,8 @@ begin
 end;
 $$;
 
+drop function if exists madde_gorulme_isaretle(text, uuid);
+
 create or replace function madde_gorulme_isaretle(p_token text, p_madde_id uuid)
 returns void
 language plpgsql
@@ -340,12 +342,21 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  v_admin kullanicilar%rowtype;
+  v_kullanici kullanicilar%rowtype;
+  v_proje_id uuid;
 begin
-  v_admin := gecerli_admin(p_token);
+  v_kullanici := gecerli_kullanici(p_token);
+
+  select r.proje_id into v_proje_id
+  from maddeler m join revizyonlar r on r.id = m.revizyon_id
+  where m.id = p_madde_id;
+
+  if not proje_erisim_var_mi(v_kullanici.id, v_proje_id, v_kullanici.rol) then
+    raise exception 'Yetkiniz yok';
+  end if;
 
   insert into madde_gorulme (madde_id, kullanici_id, son_gorulme)
-  values (p_madde_id, v_admin.id, now())
+  values (p_madde_id, v_kullanici.id, now())
   on conflict (madde_id, kullanici_id) do update set son_gorulme = now();
 end;
 $$;
@@ -906,7 +917,7 @@ grant execute on function admin_maddeleri_getir(text, uuid) to anon, authenticat
 drop function if exists kullanici_projelerini_getir(text);
 
 create or replace function kullanici_projelerini_getir(p_token text)
-returns table (id uuid, ad text, aciklama text, created_at timestamptz, revizyon_sayisi bigint, sohbet_bildirimi boolean)
+returns table (id uuid, ad text, aciklama text, created_at timestamptz, revizyon_sayisi bigint, sohbet_bildirimi boolean, bildirim text)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -919,7 +930,15 @@ begin
   return query
   select p.id, p.ad, p.aciklama, p.created_at,
     (select count(*) from revizyonlar r where r.proje_id = p.id),
-    proje_sohbet_bildirimi_var_mi(p.id, v_kullanici.id, v_kullanici.rol)
+    proje_sohbet_bildirimi_var_mi(p.id, v_kullanici.id, v_kullanici.rol),
+    (select case
+       when bool_or(madde_bildirim_durumu(m.id, v_kullanici.id) = 'kirmizi') then 'kirmizi'
+       when bool_or(madde_bildirim_durumu(m.id, v_kullanici.id) = 'yesil') then 'yesil'
+       else null
+     end
+     from maddeler m
+     join revizyonlar r on r.id = m.revizyon_id and r.yayinda = true
+     where r.proje_id = p.id)
   from projeler p
   join proje_kullanicilari pk on pk.proje_id = p.id
   where pk.kullanici_id = v_kullanici.id
@@ -930,6 +949,8 @@ $$;
 revoke all on function kullanici_projelerini_getir(text) from public;
 grant execute on function kullanici_projelerini_getir(text) to anon, authenticated;
 
+drop function if exists kullanici_revizyonlari_getir(text, uuid);
+
 create or replace function kullanici_revizyonlari_getir(p_token text, p_proje_id uuid)
 returns table (
   id uuid,
@@ -938,7 +959,8 @@ returns table (
   created_at timestamptz,
   madde_sayisi bigint,
   tamamlanan_madde_sayisi bigint,
-  revizyon_tamamlandi boolean
+  revizyon_tamamlandi boolean,
+  bildirim text
 )
 language plpgsql
 security definer
@@ -961,7 +983,14 @@ begin
        join madde_durumlari md on md.madde_id = m.id
        where m.revizyon_id = r.id and md.kullanici_id = v_kullanici.id and md.yapildi = true),
     coalesce((select rd.yapildi from revizyon_durumlari rd
-                where rd.revizyon_id = r.id and rd.kullanici_id = v_kullanici.id), false)
+                where rd.revizyon_id = r.id and rd.kullanici_id = v_kullanici.id), false),
+    (select case
+       when bool_or(madde_bildirim_durumu(m.id, v_kullanici.id) = 'kirmizi') then 'kirmizi'
+       when bool_or(madde_bildirim_durumu(m.id, v_kullanici.id) = 'yesil') then 'yesil'
+       else null
+     end
+     from maddeler m
+     where m.revizyon_id = r.id)
   from revizyonlar r
   where r.proje_id = p_proje_id and r.yayinda = true
   order by r.created_at desc;
@@ -974,7 +1003,7 @@ grant execute on function kullanici_revizyonlari_getir(text, uuid) to anon, auth
 drop function if exists kullanici_maddeleri_getir(text, uuid);
 
 create or replace function kullanici_maddeleri_getir(p_token text, p_revizyon_id uuid)
-returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, benim_durumum jsonb, yorumlar jsonb, created_at timestamptz)
+returns table (id uuid, baslik text, metin text, sira integer, medya jsonb, benim_durumum jsonb, yorumlar jsonb, created_at timestamptz, bildirim text)
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -1001,7 +1030,8 @@ begin
               jsonb_build_object('yapildi', false, 'aciklama', null)),
     coalesce((select jsonb_agg(jsonb_build_object('kullanici_adi', k.kullanici_adi, 'yorum', my.yorum, 'tarih', my.created_at) order by my.created_at)
               from madde_yorumlari my join kullanicilar k on k.id = my.kullanici_id where my.madde_id = m.id), '[]'::jsonb),
-    m.created_at
+    m.created_at,
+    madde_bildirim_durumu(m.id, v_kullanici.id)
   from maddeler m
   where m.revizyon_id = p_revizyon_id
   order by m.sira;

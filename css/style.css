@@ -1274,11 +1274,12 @@ body.modal-kilit {
 }
 
 .lightbox-overlay.acik {
-  display: grid;
-  place-items: center;
+  display: flex;
 }
 
 .lightbox-resim {
+  margin: auto;
+  display: block;
   max-width: 100%;
   max-height: 100%;
   border-radius: var(--radius-orta);
@@ -1443,8 +1444,12 @@ body.modal-kilit {
   color: var(--renk-beyaz);
 }
 
-.sohbet-baloncuk.admin-ozel .sohbet-metin {
+.proje-sohbet-mesajlari.admin-modu {
   background: var(--renk-sari-bg);
+}
+
+.proje-sohbet-mesajlari.admin-modu .sohbet-baloncuk.diger .sohbet-metin {
+  background: #fde7c2;
   color: var(--renk-sari-metin);
 }
 

@@ -13,10 +13,6 @@ function hataGoster(mesaj) {
   setTimeout(() => genelHataMesaji.classList.add("gizli"), 4000);
 }
 
-function bildirimNoktasiHtml(bildirim) {
-  return bildirim ? `<span class="bildirim-noktasi ${bildirim}"></span>` : "";
-}
-
 async function rpc(fonksiyonAdi, parametreler) {
   const { data, error } = await supabaseClient.rpc(fonksiyonAdi, parametreler);
   if (error) {
@@ -163,6 +159,7 @@ async function projeSohbetiniYukle() {
 function mesajlariCiz() {
   const kutu = document.getElementById("projeSohbetMesajlari");
   const enAlttaMi = kutu.scrollTop + kutu.clientHeight >= kutu.scrollHeight - 20;
+  kutu.classList.toggle("admin-modu", sohbetModu === "admin");
 
   const gosterilecekler = (sonMesajlar || []).filter((m) => (sohbetModu === "admin" ? m.sadece_admin : !m.sadece_admin));
 
@@ -653,6 +650,7 @@ function maddeDetayModaliAc(madde) {
     const yorum = girisi.value.trim();
     if (!yorum) return;
     await rpc("madde_yorum_ekle", { p_token: kullanici.oturum_token, p_madde_id: madde.id, p_yorum: yorum });
+    await rpc("madde_gorulme_isaretle", { p_token: kullanici.oturum_token, p_madde_id: madde.id });
     const guncelMaddeler = await rpc("admin_maddeleri_getir", { p_token: kullanici.oturum_token, p_revizyon_id: aktifRevizyonId });
     const guncelMadde = guncelMaddeler.find((m) => m.id === madde.id);
     maddeleriYukle();

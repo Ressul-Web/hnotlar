@@ -57,6 +57,7 @@ async function projeleriYukle() {
           <span>${tarihSaatFormatla(proje.created_at)}</span>
         </div>
         ${sohbetBildirimHtml(proje.sohbet_bildirimi)}
+        ${bildirimNoktasiHtml(proje.bildirim)}
       </div>
     `;
     kart.addEventListener("click", () => revizyonListesineGit(proje));
@@ -181,6 +182,7 @@ async function revizyonlariYukle() {
           }
           <span>${tarihSaatFormatla(rev.created_at)}</span>
         </div>
+        ${bildirimNoktasiHtml(rev.bildirim)}
       </div>
     `;
     kart.addEventListener("click", () => maddeListesineGit(rev));
@@ -260,6 +262,7 @@ async function maddeleriYukle() {
         }
         <span class="durum-etiket ${durum.yapildi ? "yapildi" : "beklemede"}">${durum.yapildi ? "Yapıldı" : "Bekliyor"}</span>
         <span class="sohbet-zaman">${tarihSaatFormatla(madde.created_at)}</span>
+        ${bildirimNoktasiHtml(madde.bildirim)}
       </span>
     `;
     kart.addEventListener("click", () => maddeDetayModaliAc(madde));
@@ -270,6 +273,11 @@ async function maddeleriYukle() {
 }
 
 function maddeDetayModaliAc(madde) {
+  supabaseClient
+    .rpc("madde_gorulme_isaretle", { p_token: kullanici.oturum_token, p_madde_id: madde.id })
+    .then(() => maddeleriYukle())
+    .catch(() => {});
+
   let medyaHtml = "";
   (madde.medya || []).forEach((m) => {
     medyaHtml += medyaOnizlemeHtml(m);
@@ -336,6 +344,7 @@ function maddeDetayModaliAc(madde) {
     yapildiButonu.classList.toggle("aktif", yapildiMi);
     yapildiButonu.innerHTML = `${ikonlar.tik} ${yapildiMi ? "Yapıldı Olarak İşaretlendi" : "Yaptım"}`;
     await durumuKaydet();
+    await rpc("madde_gorulme_isaretle", { p_token: kullanici.oturum_token, p_madde_id: madde.id });
     maddeleriYukle();
     revizyonlariYukle();
   });
@@ -345,6 +354,7 @@ function maddeDetayModaliAc(madde) {
     const yorum = yorumGirisi.value.trim();
     if (!yorum) return;
     await rpc("madde_yorum_ekle", { p_token: kullanici.oturum_token, p_madde_id: madde.id, p_yorum: yorum });
+    await rpc("madde_gorulme_isaretle", { p_token: kullanici.oturum_token, p_madde_id: madde.id });
     yorumGirisi.value = "";
     const guncelMadde = (
       await rpc("kullanici_maddeleri_getir", { p_token: kullanici.oturum_token, p_revizyon_id: aktifRevizyonId })

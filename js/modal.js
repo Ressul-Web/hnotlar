@@ -10,6 +10,10 @@ function kacir(metin) {
   return div.innerHTML;
 }
 
+function bildirimNoktasiHtml(bildirim) {
+  return bildirim ? `<span class="bildirim-noktasi ${bildirim}"></span>` : "";
+}
+
 function sohbetBildirimHtml(varMi) {
   return varMi
     ? `<span class="sohbet-bildirim-rozeti" title="Yeni mesaj">${ikonlar.sohbet}<span class="bildirim-noktasi mavi"></span></span>`
