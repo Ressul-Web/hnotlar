@@ -3,21 +3,25 @@
 ## Genel Amaç
 Kullanıcı (Resul), patronuyla yaptığı görüşmeler sonucunda çıkardığı notları personellere ve firmalara iletiyor. Bu proje, bu sürecin merkezi bir sistemden takip edilmesini sağlamayı hedefliyor.
 
+## Veri Modeli: Proje → Revizyon → Madde
+- **Proje:** Admin tarafından oluşturulur, birden fazla kullanıcıya (personel/firma/patron) atanabilir.
+- **Revizyon:** Bir proje içinde "gönderilen" güncelleme/revize başlığı. Kullanıcı projeye tıklayınca en son gönderilen revizyonu görür.
+- **Madde:** Bir revizyon içinde sınırsız sayıda madde olabilir. Her maddenin opsiyonel ekstra metin/görsel/video'su olabilir.
+- **Madde durumu:** Her kullanıcı kendi maddesini bağımsız olarak "yapıldı" işaretler (aynı madde birden fazla kullanıcıya atanmışsa herkes kendi durumunu işaretler), isteğe bağlı açıklama girebilir. Admin kimin işaretlediğini görebilir.
+- **Madde yorumu:** Kullanıcılar anlamadıkları maddelere yorum/geri bildirim yazabilir.
+
 ## Kapsam
-- **Giriş sayfası (index.html):** Kullanıcı adı/şifre formu. Şu an için gerçek kimlik doğrulama yok; giriş butonuna basınca doğrudan anasayfaya yönlendiriyor.
-- **Anasayfa:** Notlar, görevler ve dosya (evrak/fotoğraf/video) takibinin yapılacağı ana ekran. Dosyalar/evraklar düzgün bir sıra ile listelenecek.
-- **Görev takibi:** Patron ve kullanıcı, işleri buradan takip edip tamamlananları işaretleyebilecek.
-- **Kullanıcı/rol yönetimi:** Çalışılan firmalar ve personeller için ayrı kullanıcı hesapları açılacak; her kullanıcı giriş yaptığında sadece kendi görevlerini görecek (rol bazlı görünüm).
+- **Giriş sayfası (index.html):** Kullanıcı adı/şifre formu, Supabase üzerinden gerçek doğrulama yapıyor.
+- **Admin paneli (admin.html):** Admin projeler/revizyonlar/maddeler oluşturur, kullanıcı ve firma ekler, projelere kullanıcı atar.
+- **Anasayfa (anasayfa.html):** Personel/firma/patron için kullanıcı tarafı — henüz placeholder, bir sonraki adım.
+- **Kullanıcı/rol yönetimi:** admin (Resul, sistemi yönetir), patron (iş sahibi, ayrı kişi), personel, firma.
 
 ## Şu Anki Durum
-- [x] Statik giriş sayfası + anasayfaya yönlendirme
-- [x] Supabase şeması tasarlandı ve deploy edildi (`supabase/schema.sql`) — firmalar, kullanicilar, gorevler, gorev_dosyalari
-- [x] Frontend Supabase'e bağlandı, gerçek giriş çalışıyor (kullanıcı adı + şifre, `giris_yap` RPC)
-- [ ] Patron hesabı da sisteme eklenecek (patron kendi girişiyle işleri takip edip işaretleyecek)
-- [ ] Rol bazlı kullanıcı sistemi (admin / patron / personel / firma)
-- [ ] Görev/not oluşturma ve atama
-- [ ] Evrak/fotoğraf/video yükleme ve sıralı görüntüleme
-- [ ] Görev durumu işaretleme (yapıldı/yapılmadı)
+- [x] Giriş sayfası Supabase'e bağlı, gerçek doğrulama + oturum token'ı çalışıyor
+- [x] Admin paneli: proje/revizyon/madde oluşturma, kullanıcı/firma ekleme, projeye kullanıcı atama
+- [ ] Kullanıcı tarafı (personel/firma/patron): projeyi görme, maddeyi yapıldı işaretleme, yorum yazma — `anasayfa.html` henüz placeholder
+- [ ] Dosya yükleme (şu an sadece URL girilebiliyor — Supabase Storage entegrasyonu yapılmadı)
+- [ ] Patron hesabı sisteme eklenecek
 
 ## Veritabanı Mimarisi Kararı
 Kimlik doğrulama Supabase Auth yerine özel `kullanicilar` tablosu + `giris_yap` SQL fonksiyonu (security definer, crypt/pgcrypto ile şifre kontrolü) ile yapılıyor. Kullanıcı adı ile giriş isteniyor, e-posta zorunluluğu istenmiyor.
